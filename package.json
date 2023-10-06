@@ -1,0 +1,34 @@
+{
+  "name": "creuch",
+  "version": "1.0.0",
+  "main": "web/index.js",
+  "license": "UNLICENSED",
+  "scripts": {
+    "shopify": "shopify",
+    "build": "shopify app build",
+    "dev": "shopify app dev",
+    "info": "shopify app info",
+    "generate": "shopify app generate",
+    "deploy": "shopify app deploy"
+  },
+  "dependencies": {
+    "@shopify/app": "^3.48.4",
+    "@shopify/cli": "^3.48.4",
+    "@shopify/polaris": "^11.14.0",
+    "@shopify/polaris-viz": "^9.12.0",
+    "@shopify/shopify-api": "^7.5.2",
+    "axios": "^1.5.0",
+    "countries-list": "^2.6.1",
+    "cross-env": "^7.0.3",
+    "mime-types": "^2.1.35",
+    "shopify-api-node": "^3.12.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.0/xlsx-0.20.0.tgz"
+  },
+  "author": "Michel TANGA",
+  "private": true,
+  "workspaces": [
+    "web",
+    "web/frontend",
+    "extensions/*"
+  ]
+}
