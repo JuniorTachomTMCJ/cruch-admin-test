@@ -8,6 +8,7 @@ import {
   LegacyCard,
   FormLayout,
   Modal,
+  Select,
   IndexTable,
   useIndexResourceState,
   Text,
@@ -37,6 +38,10 @@ export default function OffresPage() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
   
+
+  const [select, setSelect] = useState('');
+  const options = [];
+  const [cse, setCse] = useState([]);
 
 
   const [offres, setOffres] = useState([]);
@@ -371,6 +376,31 @@ export default function OffresPage() {
 
   const handleFiltersClearAll = useCallback(() => { handleQueryValueRemove(); }, [handleQueryValueRemove]);
 
+  
+  const handleSelectChange = useCallback(
+    async (value) => {
+        console.log(value);
+        setIsLoading(true);
+        await fetch("https://staging.api.creuch.fr/api/get_entreprise_collections", {
+          method: "POST",
+          body: JSON.stringify({ entreprise_id: value }),
+          headers: { "Content-type": "application/json" },
+        })
+          .then((response) => response.json())
+          .then((datas) => {
+            console.log("orders", datas);
+            setOffres(datas);
+            setFilteredOffres(datas);
+            setIsLoading(false);
+          })
+          .catch((err) => {
+            console.log(err.message);
+          });
+      }
+    );
+  
+  
+  
   const fetchData = async () => {
     setIsLoading(true);
     await fetch(
@@ -391,6 +421,31 @@ export default function OffresPage() {
       .catch((err) => {
         console.log(err);
       });
+
+
+
+      await fetch("https://staging.api.creuch.fr/api/entreprises", {
+        method: "GET",
+        headers: { "Content-type": "application/json" },
+      })
+        .then((response) => response.json())
+        .then((datas) => {
+          console.log("orders", datas);
+          
+          for (let i = 0; i < datas.length; i++) {
+           // console.log("iiiiii", i)
+            let item = {
+              label : datas[i].cse_name.value,
+              value : datas[i].code_cse.value
+            }
+            options.push(item);
+          } 
+          console.log("options", options);
+          setCse(options);
+        })
+        .catch((err) => {
+          console.log("erreur de chargement des entreprises");
+        });
   };
 
   useEffect(() => {
@@ -569,7 +624,7 @@ export default function OffresPage() {
               <Grid.Cell columnSpan={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 1 }}>
                 <Tooltip content="Exporter le tableau">
                   <Button onClick={exportToExcel} size="medium" primary>
-                    <Icon source={ExportMinor} color="base" /> Exporter
+                    <Icon source={ExportMinor} color="base" /> Exporter  ...
                   </Button>
                 </Tooltip>
               </Grid.Cell>

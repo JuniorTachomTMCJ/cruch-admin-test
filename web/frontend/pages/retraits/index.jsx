@@ -6,6 +6,7 @@ import {
   Page,
   Frame,
   Badge,
+  Select,
   Layout,
   Loading,
   LegacyCard,
@@ -24,6 +25,32 @@ export default function HomePage() {
 
   const [retraits, setRetraits] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [select, setSelect] = useState('');
+  const options = [];
+  const [cse, setCse] = useState([]);
+
+
+  const handleSelectChange = useCallback(
+    async (value) => {
+        console.log(value);
+        setIsLoading(true);
+        await fetch("https://staging.api.creuch.fr/api/get_entreprise_emplacements", {
+          method: "POST",
+          body: JSON.stringify({ cse: value }),
+          headers: { "Content-type": "application/json" },
+        })
+          .then((response) => response.json())
+          .then((datas) => {
+            console.log("orders", datas);
+            setRetraits(datas);
+            setIsLoading(false);
+          })
+          .catch((err) => {
+            console.log(err.message);
+          });
+      }
+    );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,7 +72,34 @@ export default function HomePage() {
         .catch((err) => {
           console.log(err.message);
         });
+
+
+        await fetch("https://staging.api.creuch.fr/api/entreprises", {
+          method: "GET",
+          headers: { "Content-type": "application/json" },
+        })
+          .then((response) => response.json())
+          .then((datas) => {
+            console.log("orders", datas);
+            
+            for (let i = 0; i < datas.length; i++) {
+             // console.log("iiiiii", i)
+              let item = {
+                label : datas[i].cse_name.value,
+                value : datas[i].code_cse.value
+              }
+              options.push(item);
+            } 
+            console.log("options", options);
+            setCse(options);
+          })
+          .catch((err) => {
+            console.log(err.message);
+          });
     };
+
+
+    
 
     fetchData();
   }, []);
@@ -123,6 +177,22 @@ export default function HomePage() {
       }
       subtitle="Gérez les points de retrait/TOTEM"
       compactTitle
+      secondaryActions={[
+        {
+          content: (
+            <div style={{ display: "inline-flex", alignItems: "center" }}>
+              <div style={{ marginRight: "10px" }}>
+              <Select
+                  label="Filtrer par CSE"
+                  options={cse}
+                  onChange={handleSelectChange}
+                  value={select}
+                />
+              </div>
+            </div>
+          ),
+        },
+      ]}
 /*       secondaryActions={[
         {
           content: (

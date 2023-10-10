@@ -11,6 +11,7 @@ import {
   LegacyCard,
   Thumbnail,
   Form,
+  Select,
   Grid,
   FormLayout,
   IndexTable,
@@ -30,6 +31,10 @@ export default function ClientsPage() {
   const redirect = Redirect.create(app);
 
   
+  const [select, setSelect] = useState('');
+  const options = [];
+  const [cse, setCse] = useState([]);
+
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -325,6 +330,30 @@ export default function ClientsPage() {
 
   const handleFiltersClearAll = useCallback(() => {handleQueryValueRemove();}, [handleQueryValueRemove]);
 
+  const handleSelectChange = useCallback(
+    async (value) => {
+        console.log(value);
+        setIsLoading(true);
+        await fetch("https://staging.api.creuch.fr/api/get_customers_by_cse", {
+          method: "POST",
+          body: JSON.stringify({ code_cse: value }),
+          headers: { "Content-type": "application/json" },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("orders", data);
+            setCustomers(data);
+            setFilteredCustomers(data);
+            setIsLoading(false);
+          })
+          .catch((err) => {
+            console.log(err.message);
+          });
+      }
+    );
+
+
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -343,6 +372,30 @@ export default function ClientsPage() {
         .catch((err) => {
           console.log(err.message);
         });
+
+
+        await fetch("https://staging.api.creuch.fr/api/entreprises", {
+          method: "GET",
+          headers: { "Content-type": "application/json" },
+        })
+          .then((response) => response.json())
+          .then((datas) => {
+            console.log("orders", datas);
+            
+            for (let i = 0; i < datas.length; i++) {
+             // console.log("iiiiii", i)
+              let item = {
+                label : datas[i].cse_name.value,
+                value : datas[i].code_cse.value
+              }
+              options.push(item);
+            } 
+            console.log("options", options);
+            setCse(options);
+          })
+          .catch((err) => {
+            console.log(err.message);
+          });
     };
 
     fetchData();
@@ -362,6 +415,20 @@ export default function ClientsPage() {
         {
           content: "Mettre a jour la base salariale",
           onAction: addOfferModal,
+        },
+        {
+          content: (
+            <div style={{ display: "inline-flex", alignItems: "center" }}>
+              <div style={{ marginRight: "10px" }}>
+              <Select
+                  label="Filtrer par CSE"
+                  options={cse}
+                  onChange={handleSelectChange}
+                  value={select}
+                />
+              </div>
+            </div>
+          ),
         },
       ]}
     >

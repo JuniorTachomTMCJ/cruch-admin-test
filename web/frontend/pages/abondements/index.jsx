@@ -44,6 +44,10 @@ export default function AbondementsPage() {
   const [initialValue, setInitialValue] = useState("");
   const [salarie, setSalarie] = useState("");
 
+  const [cse, setCse] = useState([]);
+  const [select, setSelect] = useState('');
+  const options = [];
+
   const [isLoading, setIsLoading] = useState(true);
   const [addAbondement, setAddAbondement] = useState(false);
 
@@ -431,6 +435,45 @@ export default function AbondementsPage() {
 
   const handleFiltersClearAll = useCallback(() => {handleQueryValueRemove();}, [handleQueryValueRemove]);
 
+  const handleSelectChange = useCallback(
+    async (value) => {
+      setIsLoading(true);
+      try {
+        const [abondementsResponse, customersResponse] = await Promise.all([
+          fetch("https://staging.api.creuch.fr/api/get_gift_cards", {
+            method: "POST",
+            body: JSON.stringify({
+              cse: value,
+            }),
+            headers: {
+              "Content-type": "application/json",
+            },
+          }),
+          fetch("https://staging.api.creuch.fr/api/get_customers_by_cse", {
+            method: "POST",
+            headers: {
+              "Content-type": "application/json",
+            },
+          }),
+        ]);
+        setIsLoading(false);
+  
+        const abondementsData = await abondementsResponse.json();
+        const customersData = await customersResponse.json();
+  
+        console.log("Abondements", abondementsData);
+        console.log("Customers", customersData);
+  
+        setAbondements(abondementsData);
+        setFilteredAbondements(abondementsData);
+        setCustomers(customersData);
+        
+      }catch (error) {
+        console.error("Erreur lors du chargement des données :", error);
+      }
+    }
+    );
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -458,6 +501,34 @@ export default function AbondementsPage() {
       setAbondements(abondementsData);
       setFilteredAbondements(abondementsData);
       setCustomers(customersData);
+
+
+
+      await fetch("https://staging.api.creuch.fr/api/entreprises", {
+        method: "GET",
+        headers: { "Content-type": "application/json" },
+      })
+        .then((response) => response.json())
+        .then((datas) => {
+          console.log("orders", datas);
+          
+          for (let i = 0; i < datas.length; i++) {
+           // console.log("iiiiii", i)
+            let item = {
+              label : datas[i].cse_name.value,
+              value : datas[i].code_cse.value
+            }
+            options.push(item);
+          } 
+          console.log("options", options);
+          setCse(options);
+        })
+        .catch((err) => {
+          console.log(err.message);
+        });
+
+
+
     } catch (error) {
       console.error("Erreur lors du chargement des données :", error);
     }
@@ -479,6 +550,20 @@ export default function AbondementsPage() {
           {
             content: "Ajouter un abondement",
             onAction: addAbondementModal,
+          },
+          {
+            content: (
+              <div style={{ display: "inline-flex", alignItems: "center" }}>
+                <div style={{ marginRight: "10px" }}>
+                <Select
+                    label="Filtrer par CSE"
+                    options={cse}
+                    onChange={handleSelectChange}
+                    value={select}
+                  />
+                </div>
+              </div>
+            ),
           },
         ]}
       >
