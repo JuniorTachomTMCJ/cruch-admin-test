@@ -332,7 +332,7 @@ export default function ClientsPage() {
 
   const handleSelectChange = useCallback(
     async (value) => {
-        console.log(value);
+        console.log("valeur ici: ", value);
         setIsLoading(true);
         await fetch("https://staging.api.creuch.fr/api/get_customers_by_cse", {
           method: "POST",

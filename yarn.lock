@@ -6237,7 +6237,7 @@
     "qs" "^6.5.2"
     "stopcock" "^1.0.0"
 
-"shopify-app-template-node@file:F:\\PROJECT\\shopify\\creuch\\CreuchShopify\\web":
+"shopify-app-template-node@file:F:\\PROJECT\\shopify\\creuch\\CreuchAdmin\\web":
   "resolved" "file:web"
   "version" "1.0.0"
   dependencies:
@@ -6247,7 +6247,7 @@
     "cross-env" "^7.0.3"
     "serve-static" "^1.14.1"
 
-"shopify-frontend-template-react@file:F:\\PROJECT\\shopify\\creuch\\CreuchShopify\\web\\frontend":
+"shopify-frontend-template-react@file:F:\\PROJECT\\shopify\\creuch\\CreuchAdmin\\web\\frontend":
   "resolved" "file:web/frontend"
   "version" "1.0.0"
   dependencies:

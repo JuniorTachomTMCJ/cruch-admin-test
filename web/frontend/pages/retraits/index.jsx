@@ -15,7 +15,7 @@ import {
   useIndexResourceState,
 } from "@shopify/polaris";
 import { ImageMajor } from "@shopify/polaris-icons";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Redirect } from '@shopify/app-bridge/actions';
 
@@ -51,6 +51,8 @@ export default function HomePage() {
           });
       }
     );
+
+    
 
   useEffect(() => {
     const fetchData = async () => {

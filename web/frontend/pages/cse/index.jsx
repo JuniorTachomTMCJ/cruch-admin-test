@@ -12,20 +12,22 @@ import {
   useIndexResourceState,
   Thumbnail,
   Modal,
+  Grid,
+  Tooltip,
+  Button,
+  Icon,
 } from "@shopify/polaris";
-import {
-  ImageMajor,
-} from "@shopify/polaris-icons";
+import { ImageMajor, ExportMinor } from "@shopify/polaris-icons";
 import { useState, useEffect } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Redirect } from '@shopify/app-bridge/actions';
+import { utils, writeFileXLSX } from "xlsx";
+export { utils, writeFileXLSX };
 
 export default function CsePage() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
 
-  
-  
   const [isLoading, setIsLoading] = useState(true);
   const [coops, setCoop] = useState([]);
 
@@ -119,7 +121,6 @@ export default function CsePage() {
         <IndexTable.Cell>{email.value} </IndexTable.Cell>
         <IndexTable.Cell>{phone.value} </IndexTable.Cell>
         <IndexTable.Cell>
-         
           <button onClick={ async () => {
             console.log("test");
             await fetch(`https://staging.api.creuch.fr/api/check_entreprise`, {
@@ -156,11 +157,26 @@ export default function CsePage() {
           }>    
           Connexion
           </button>
-        
-          </IndexTable.Cell>
+        </IndexTable.Cell>
       </IndexTable.Row>
     )
   );
+
+  const exportToExcel = async () => {
+    const tableau = coops.map((coop, index) => {
+      return {
+        Image: coop.image ? coop.image.value : "Aucun",
+        Code: coop.code_cse.value,
+        Nom: coop.cse_name.value,
+        Email: coop.email.value,
+        Téléphone: coop.phone.value,
+      };
+    });
+    const wb = utils.book_new();
+    const ws = utils.json_to_sheet(tableau);
+    utils.book_append_sheet(wb, ws, "Sheet1");
+    writeFileXLSX(wb, "Liste CSE.xlsx");
+  };
 
   const bulkActions = [
     {
@@ -187,6 +203,14 @@ export default function CsePage() {
       titleMetadata={<Badge status="success">{coops.length} CSE</Badge>}
       subtitle="Gérez les CSE"
       compactTitle
+      primaryAction={{
+        content: (
+          <div style={{ display: "flex" }}>
+            <Icon source={ExportMinor} color="base" /> Exporter
+          </div>
+        ),
+        onAction: exportToExcel,
+      }}
     >
       <div>
         <Modal open={isLoading} loading small></Modal>
@@ -197,11 +221,11 @@ export default function CsePage() {
             <IndexTable
               resourceName={resourceName}
               itemCount={coops.length}
-  /*             selectedItemsCount={
+              /*             selectedItemsCount={
                 allResourcesSelected ? "All" : selectedResources.length
               } */
               emptyState={emptyStateMarkup}
-             /*  onSelectionChange={handleSelectionChange} */
+              /*  onSelectionChange={handleSelectionChange} */
               headings={[
                 { title: "Image" },
                 { title: "Code" },
@@ -210,7 +234,7 @@ export default function CsePage() {
                 { title: "Téléphone" },
                 { title: "Compte" },
               ]}
-             /*  bulkActions={bulkActions} */
+              /*  bulkActions={bulkActions} */
               // onNavigation
               // selectable
             >

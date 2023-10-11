@@ -628,6 +628,19 @@ export default function OffresPage() {
                   </Button>
                 </Tooltip>
               </Grid.Cell>
+
+              <Grid.Cell columnSpan={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 1 }}>
+                  <div style={{ display: "inline-flex", alignItems: "center" }}>
+                    <div style={{ marginRight: "10px" }}>
+                    <Select
+                        label="Filtrer par CSE"
+                        options={cse}
+                        onChange={handleSelectChange}
+                        value={select}
+                      />
+                    </div>
+                  </div>
+              </Grid.Cell>
             </Grid>
           </Layout.Section>
           <br />
