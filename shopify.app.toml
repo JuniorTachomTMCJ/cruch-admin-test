@@ -2,7 +2,7 @@
 
 name = "creuch_workspace"
 client_id = "d612b4cff032e7c9374665cb02060548"
-application_url = "https://org-budget-aug-division.trycloudflare.com"
+application_url = "https://pointer-breakdown-math-circuit.trycloudflare.com"
 embedded = true
 
 [access_scopes]
@@ -11,9 +11,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://org-budget-aug-division.trycloudflare.com/auth/callback",
-  "https://org-budget-aug-division.trycloudflare.com/auth/shopify/callback",
-  "https://org-budget-aug-division.trycloudflare.com/api/auth/callback"
+  "https://pointer-breakdown-math-circuit.trycloudflare.com/auth/callback",
+  "https://pointer-breakdown-math-circuit.trycloudflare.com/auth/shopify/callback",
+  "https://pointer-breakdown-math-circuit.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]

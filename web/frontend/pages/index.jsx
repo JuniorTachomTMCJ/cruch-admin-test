@@ -26,6 +26,9 @@ import {
   Scrollable,
   OptionList,
   HorizontalStack,
+  Checkbox,
+  Modal,
+  Collapsible,
 } from "@shopify/polaris";
 import {
   PolarisVizProvider,
@@ -35,16 +38,19 @@ import {
   CalendarMinor,
   ImageMajor,
   ArrowRightMinor,
+  CollectionsMajor,
+  ProductsMajor,
+  ExportMinor,
 } from "@shopify/polaris-icons";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Redirect } from "@shopify/app-bridge/actions";
 import "@shopify/polaris-viz/build/esm/styles.css";
+import { utils, writeFileXLSX } from "xlsx";
+export { utils, writeFileXLSX };
 
 export default function LoginPage() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
-
-
 
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -58,11 +64,13 @@ export default function LoginPage() {
     "count_reductions_use": 0
   });
   const [collections, setCollections] = useState([]);
+  const [entreprises, setEntreprises] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [locations, setLocations] = useState([]);
   const [orders, setOrders] = useState([]);
   const [reductions, setReductions] = useState([]);
-  const [selected, setSelected] = useState("1");
+  const [selectedCollections, setSelectedCollections] = useState([]);
+  const [selectedEntreprises, setSelectedEntreprises] = useState([]);
 
   const mdDown = false;
   const today = new Date(new Date().setHours(0, 0, 0, 0));
@@ -176,7 +184,6 @@ export default function LoginPage() {
     setInputValues((prevState) => {
       return { ...prevState, since: value };
     });
-    console.log("handleStartInputValueChange, validDate", value);
     if (isValidDate(value)) {
       const newSince = parseYearMonthDayDateString(value);
       setActiveDateRange((prevState) => {
@@ -239,10 +246,12 @@ export default function LoginPage() {
   function apply() {
     setPopoverActive(false);
     const stats = getAllStatistics(
-      null,
+      selectedCollections,
+      selectedEntreprises,
       activeDateRange.period.since,
       activeDateRange.period.until,
       collections,
+      entreprises,
       orders,
       reductions
     );
@@ -289,15 +298,15 @@ export default function LoginPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const cachedData = localStorage.getItem("dashboardData");
-        if (cachedData) {
-          const cachedStats = JSON.parse(cachedData);
-          setCollections(cachedStats.collections);
-          setCustomers(cachedStats.customers);
-          setLocations(cachedStats.locations);
-          setOrders(cachedStats.orders);
-          setReductions(cachedStats.reductions);
-        } else {
+        // const cachedData = localStorage.getItem("dashboardData");
+        // if (cachedData) {
+        //   const cachedStats = JSON.parse(cachedData);
+        //   setCollections(cachedStats.collections);
+        //   setCustomers(cachedStats.customers);
+        //   setLocations(cachedStats.locations);
+        //   setOrders(cachedStats.orders);
+        //   setReductions(cachedStats.reductions);
+        // } else {
           setIsLoading(true);
           const statsResponse = await fetch(
             `https://staging.api.creuch.fr/api/statistics`,
@@ -309,30 +318,34 @@ export default function LoginPage() {
             }
           );
           const data = await statsResponse.json();
+          console.log(data);
           setCollections(data["collections"]);
+          setEntreprises(data["entreprises"]);
           setCustomers(data["customers"]);
           setLocations(data["locations"]);
           setOrders(data["orders"]);
           setReductions(data["reductions"]);
 
-          localStorage.setItem(
-            "dashboardData",
-            JSON.stringify({
-              collections: data["collections"],
-              customers: data["customers"],
-              locations: data["locations"],
-              orders: data["orders"],
-              reductions: data["reductions"],
-            })
-          );
-        }
+        //   localStorage.setItem(
+        //     "dashboardData",
+        //     JSON.stringify({
+        //       collections: data["collections"],
+        //       customers: data["customers"],
+        //       locations: data["locations"],
+        //       orders: data["orders"],
+        //       reductions: data["reductions"],
+        //     })
+        //   );
+        // }
 
         if (collections.length >= 1 && orders.length >= 1 && reductions.length >= 1) {
           const stats = getAllStatistics(
-            null,
+            selectedCollections,
+            selectedEntreprises,
             activeDateRange.period.since,
             activeDateRange.period.until,
             collections,
+            entreprises,
             orders,
             reductions
           );
@@ -351,29 +364,15 @@ export default function LoginPage() {
     fetchData();
   }, []);
 
-  const handleSelectChange = useCallback(
-    async (value) => {
-      setSelected(value);
-      const stats = getAllStatistics(
-        value == 1 ? null : value,
-        activeDateRange.period.since,
-        activeDateRange.period.until,
-        collections,
-        orders,
-        reductions
-      );
-      setStats(stats);
-    },
-    [collections, orders, reductions, activeDateRange]
-  );
-
   function getAllStatistics(
-    collectionId,
+    collectionsIds,
+    entreprisesIds,
     startDate,
     endDate,
-    collections,
-    orders,
-    reductions
+    collections = [],
+    entreprises = [],
+    orders = [],
+    reductions = []
   ) {
     const datas = {};
     let total_reductions = 0;
@@ -384,83 +383,230 @@ export default function LoginPage() {
     let total_reductions_use_price = 0;
     let count_reductions_use = 0;
 
-    if (startDate !== null && endDate !== null) {
-      const dateRange = getDateRange(startDate, endDate);
-      dateRange.forEach((date) => {
-        datas[date.toISOString().slice(0, 10)] = 0;
+    // const dateRange = getDateRange(startDate, endDate);
+    // dateRange.forEach((date) => {
+    //   datas[date.toISOString().slice(0, 10)] = 0;
+    // });
+
+    if (entreprisesIds.length === 0) {
+      entreprises.forEach((entreprise) => {
+        if (collectionsIds.length === 0) {
+          collections.forEach((collection) => {
+            orders.forEach((order) => {
+              const orderDate = new Date(order.created_at);
+              order.line_items.forEach((product) => {
+                let productsIds = collection.products.map(
+                  (produit) => produit.id.match(/\/(\d+)$/)[1]
+                );
+                if (
+                  productsIds.includes(String(product.product_id)) &&
+                  orderDate >= startDate &&
+                  orderDate < endDate &&
+                  order.client.entreprise.code_cse.value ==
+                    entreprise.code_cse.value
+                ) {
+                  const formattedDate = orderDate.toISOString().slice(0, 10);
+                  if (!datas[formattedDate]) {
+                    datas[formattedDate] = 1;
+                  } else {
+                    datas[formattedDate]++;
+                  }
+                }
+              });
+            });
+          });
+        } else {
+          collectionsIds.forEach((collectionId) => {
+            const collection = collections.find(
+              (collection) => collection.id === collectionId
+            );
+            if (collection) {
+              orders.forEach((order) => {
+                const orderDate = new Date(order.created_at);
+                order.line_items.forEach((product) => {
+                  let productsIds = collection.products.map(
+                    (produit) => produit.id.match(/\/(\d+)$/)[1]
+                  );
+                  if (
+                    productsIds.includes(String(product.product_id)) &&
+                    orderDate >= startDate &&
+                    orderDate < endDate &&
+                    order.client.entreprise.code_cse.value ==
+                      entreprise.code_cse.value
+                  ) {
+                    const formattedDate = orderDate.toISOString().slice(0, 10);
+                    if (!datas[formattedDate]) {
+                      datas[formattedDate] = 1;
+                    } else {
+                      datas[formattedDate]++;
+                    }
+                  }
+                });
+              });
+            } else {
+              const productId = collectionId;
+              orders.forEach((order) => {
+                const orderDate = new Date(order.created_at);
+                order.line_items.forEach((product) => {
+                  if (
+                    String(productId.match(/\/(\d+)$/)[1]) ==
+                      String(product.product_id) &&
+                    orderDate >= startDate &&
+                    orderDate < endDate &&
+                    order.client.entreprise.code_cse.value ==
+                      entreprise.code_cse.value
+                  ) {
+                    const formattedDate = orderDate.toISOString().slice(0, 10);
+                    if (!datas[formattedDate]) {
+                      datas[formattedDate] = 1;
+                    } else {
+                      datas[formattedDate]++;
+                    }
+                  }
+                });
+              });
+            }
+          });
+        }
+      });
+    } else {
+      entreprisesIds.forEach((entrepriseId) => {
+        const entreprise = entreprises.find(
+          (entreprise) => entreprise.code_cse.value === entrepriseId
+        );
+
+        if (collectionsIds.length === 0) {
+          collections.forEach((collection) => {
+            orders.forEach((order) => {
+              const orderDate = new Date(order.created_at);
+              order.line_items.forEach((product) => {
+                let productsIds = collection.products.map(
+                  (produit) => produit.id.match(/\/(\d+)$/)[1]
+                );
+                if (
+                  productsIds.includes(String(product.product_id)) &&
+                  orderDate >= startDate &&
+                  orderDate < endDate &&
+                  order.client.entreprise.code_cse.value ==
+                    entreprise.code_cse.value
+                ) {
+                  const formattedDate = orderDate.toISOString().slice(0, 10);
+                  if (!datas[formattedDate]) {
+                    datas[formattedDate] = 1;
+                  } else {
+                    datas[formattedDate]++;
+                  }
+                }
+              });
+            });
+          });
+        } else {
+          collectionsIds.forEach((collectionId) => {
+            const collection = collections.find(
+              (collection) => collection.id === collectionId
+            );
+            if (collection) {
+              orders.forEach((order) => {
+                const orderDate = new Date(order.created_at);
+                order.line_items.forEach((product) => {
+                  let productsIds = collection.products.map(
+                    (produit) => produit.id.match(/\/(\d+)$/)[1]
+                  );
+                  if (
+                    productsIds.includes(String(product.product_id)) &&
+                    orderDate >= startDate &&
+                    orderDate < endDate &&
+                    order.client.entreprise.code_cse.value ==
+                      entreprise.code_cse.value
+                  ) {
+                    const formattedDate = orderDate.toISOString().slice(0, 10);
+                    if (!datas[formattedDate]) {
+                      datas[formattedDate] = 1;
+                    } else {
+                      datas[formattedDate]++;
+                    }
+                  }
+                });
+              });
+            } else {
+              const productId = collectionId;
+              orders.forEach((order) => {
+                const orderDate = new Date(order.created_at);
+                order.line_items.forEach((product) => {
+                  if (
+                    String(productId.match(/\/(\d+)$/)[1]) ==
+                      String(product.product_id) &&
+                    orderDate >= startDate &&
+                    orderDate < endDate &&
+                    order.client.entreprise.code_cse.value ==
+                      entreprise.code_cse.value
+                  ) {
+                    const formattedDate = orderDate.toISOString().slice(0, 10);
+                    if (!datas[formattedDate]) {
+                      datas[formattedDate] = 1;
+                    } else {
+                      datas[formattedDate]++;
+                    }
+                  }
+                });
+              });
+            }
+          });
+        }
       });
     }
 
-    if (collectionId === null) {
-      collections.forEach((collection) => {
+    if (entreprisesIds.length === 0) {
+      entreprises.forEach((entreprise) => {
         orders.forEach((order) => {
           const orderDate = new Date(order.created_at);
-          order.line_items.forEach((product) => {
-            if (
-              collection.products
-                .map((produit) => produit.id.match(/\/(\d+)$/)[1])
-                .includes(String(product.product_id)) &&
-              ((startDate === null && endDate === null) ||
-                (startDate !== null &&
-                  endDate !== null &&
-                  orderDate >= startDate &&
-                  orderDate < endDate))
-            ) {
-              const formattedDate = orderDate.toISOString().slice(0, 10);
-              if (!datas[formattedDate]) {
-                datas[formattedDate] = 1;
-              } else {
-                datas[formattedDate]++;
+          if (
+            order.financial_status === "paid" &&
+            orderDate >= startDate &&
+            orderDate < endDate &&
+            order.client.entreprise.code_cse.value == entreprise.code_cse.value
+          ) {
+            total_orders_count++;
+            order.transactions.forEach((transaction) => {
+              if (
+                transaction.gateway == "gift_card" &&
+                transaction.status == "success"
+              ) {
+                total_reductions += parseFloat(transaction.amount);
               }
-            }
-          });
+            });
+            total_sales += parseFloat(order.total_price);
+          }
         });
       });
     } else {
-      const collection = collections.find((collection) => {
-        return collection.id === collectionId;
-      });
-      if (collection) {
+      entreprisesIds.forEach((entrepriseId) => {
+        const entreprise = entreprises.find(
+          (entreprise) => entreprise.code_cse.value === entrepriseId
+        );
+
         orders.forEach((order) => {
           const orderDate = new Date(order.created_at);
-          order.line_items.forEach((product) => {
-            if (
-              collection.products
-                .map((produit) => produit.id.match(/\/(\d+)$/)[1])
-                .includes(String(product.product_id)) &&
-              ((startDate === null && endDate === null) ||
-                (startDate !== null &&
-                  endDate !== null &&
-                  orderDate >= startDate &&
-                  orderDate < endDate))
-            ) {
-              const formattedDate = orderDate.toISOString().slice(0, 10);
-              if (!datas[formattedDate]) {
-                datas[formattedDate] = 1;
-              } else {
-                datas[formattedDate]++;
-              }
-            }
-          });
-        });
-      }
-    }
-
-    orders.forEach((order) => {
-      const orderDate = new Date(order.created_at);
-      if (
-        order.financial_status === "paid" &&
-        ((startDate === null && endDate === null) ||
-          (startDate !== null &&
-            endDate !== null &&
+          if (
+            order.financial_status === "paid" &&
             orderDate >= startDate &&
-            orderDate < endDate))
-      ) {
-        total_orders_count++;
-        total_reductions += parseFloat(order.total_discounts);
-        total_sales += parseFloat(order.total_price);
-      }
-    });
+            orderDate < endDate &&
+            order.client.entreprise.code_cse.value == entreprise.code_cse.value
+          ) {
+            total_orders_count++;
+            order.transactions.forEach((transaction) => {
+              if (
+                transaction.gateway == "gift_card" &&
+                transaction.status == "success"
+              ) {
+                total_reductions += parseFloat(transaction.amount);
+              }
+            });
+            total_sales += parseFloat(order.total_price);
+          }
+        });
+      });
+    }
 
     const transformedData = Object.keys(datas).map((date, index) => ({
       key: date,
@@ -471,13 +617,7 @@ export default function LoginPage() {
 
     reductions.forEach((reduction) => {
       const reductionDate = new Date(reduction.created_at);
-      if (
-        (startDate === null && endDate === null) ||
-        (startDate !== null &&
-          endDate !== null &&
-          reductionDate >= startDate &&
-          reductionDate < endDate)
-      ) {
+      if (reductionDate >= startDate && reductionDate < endDate) {
         total_reductions_price += parseFloat(reduction.initial_value);
         total_reductions_use_price += parseFloat(
           reduction.initial_value - reduction.balance
@@ -515,6 +655,173 @@ export default function LoginPage() {
     return dateRange;
   }
 
+  const handleSelectionCollections = useCallback((parentId) => {
+    if (parentId === 1) {
+      setSelectedCollections([]);
+    } else {
+      if (selectedCollections.includes(parentId)) {
+        setSelectedCollections(selectedCollections.filter((id) => id !== parentId));
+      } else {
+        setSelectedCollections([...selectedCollections, parentId]);
+      }
+    }
+  }, [selectedCollections]);
+
+  const handleSelectionEntreprises = useCallback(
+    (parentId) => {
+      if (parentId === 1) {
+        setSelectedEntreprises([]);
+      } else {
+        if (selectedEntreprises.includes(parentId)) {
+          setSelectedEntreprises(
+            selectedEntreprises.filter((id) => id !== parentId)
+          ); // Désélectionne l'élément
+        } else {
+          setSelectedEntreprises([...selectedEntreprises, parentId]); // Sélectionne l'élément
+        }
+      }
+    },
+    [selectedEntreprises]
+  );
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const stats = getAllStatistics(
+          selectedCollections,
+          selectedEntreprises,
+          activeDateRange.period.since,
+          activeDateRange.period.until,
+          collections,
+          entreprises,
+          orders,
+          reductions
+        );
+        setStats(stats);
+      } catch (error) {
+        console.error(
+          "Erreur de chargement des statistiques globales :",
+          error
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedCollections, selectedEntreprises, activeDateRange, collections, entreprises, orders, reductions]);
+
+  const renderSubcategories = (parentId) => {
+    const parentCollection = collections.find(
+      (collection) => collection.id === parentId
+    );
+
+    if (
+      parentCollection.sub_collections.length === 0 &&
+      parentCollection.products.length === 0
+    ) {
+      return null;
+    }
+
+    return (
+      (parentCollection.sub_collections.length > 0 ||
+        parentCollection.products.length > 0) && (
+        <div style={{ marginLeft: "40px" }}>
+          <Collapsible
+            open={selectedCollections.includes(parentId)}
+            id={parentId}
+            transition={{ duration: "150ms", timingFunction: "ease" }}
+            expandOnPrint
+          >
+            {parentCollection.sub_collections.map((sub_collection) => (
+              <VerticalStack key={sub_collection.handle}>
+                <Checkbox
+                  label={
+                    <>
+                      <div style={{ display: "flex" }}>
+                        <Icon
+                          source={CollectionsMajor}
+                          accessibilityLabel="Collection"
+                          color="highlight"
+                        />{" "}
+                        {sub_collection.title.length > 25
+                          ? `${sub_collection.title.substring(0, 25)}...`
+                          : sub_collection.title}{" "}
+                        {sub_collection.sub_collections.length === 0 ||
+                        sub_collection.products.length === 0
+                          ? "(0)"
+                          : ""}
+                      </div>
+                    </>
+                  }
+                  checked={selectedCollections.includes(sub_collection.id)}
+                  onChange={() => handleSelectionCollections(sub_collection.id)}
+                />
+                {renderSubcategories(sub_collection.id)}
+              </VerticalStack>
+            ))}
+            {parentCollection.sub_collections.length >= 1 &&
+              parentCollection.products.length >= 1 && <Divider />}
+            {parentCollection.products.map((product) => (
+              <VerticalStack key={product.id}>
+                <Checkbox
+                  label={
+                    <>
+                      <div style={{ display: "flex" }}>
+                        <Icon
+                          source={ProductsMajor}
+                          accessibilityLabel="Produit"
+                          color="success"
+                        />{" "}
+                        {product.title.length > 25
+                          ? `${product.title.substring(0, 25)}...`
+                          : product.title}
+                      </div>
+                    </>
+                  }
+                  checked={selectedCollections.includes(product.id)}
+                  onChange={() => handleSelectionCollections(product.id)}
+                />
+              </VerticalStack>
+            ))}
+          </Collapsible>
+        </div>
+      )
+    );
+  };
+
+  const exportToExcel = async () => {
+    const tableau = [
+      {
+        "Total de commandes": stats.total_orders_count,
+        "Chiffre d'affaire global": stats.total_sales + " €",
+        "Chiffre d'affaire abondement": stats.total_reductions + " €",
+        "Chiffre d'affaire hors abondements":
+          parseFloat(stats.total_sales - stats.total_reductions).toFixed(2) +
+          " €",
+        "Total des abondements": stats.total_reductions_count,
+        "Montant global": stats.total_reductions_price + " €",
+        "Chiffre d'affaire des abondements utilisés":
+          stats.total_reductions_use_price + " €",
+        "Total des abondements utilisés": stats.count_reductions_use,
+        Offres: collections.length,
+        Employés: customers.length,
+        "Points de retraits": locations.length,
+      },
+    ];
+    const wb = utils.book_new();
+    const ws = utils.json_to_sheet(tableau);
+    utils.book_append_sheet(
+      wb,
+      ws,
+      "Stats " +
+        formatDateToYearMonthDayDateString(activeDateRange.period.since) +
+        " - " +
+        formatDateToYearMonthDayDateString(activeDateRange.period.until)
+    );
+    writeFileXLSX(wb, "Statistiques.xlsx");
+  };
+
   if (isLoading) {
     return (
       <div style={{ height: "100px" }}>
@@ -529,8 +836,16 @@ export default function LoginPage() {
     <Page
       fullWidth
       title="Tableau de bord"
-      /* subtitle={`${user_data.cse_name?.value}, ${user_data.code_cse?.value}`} */
+      subtitle="Creuch Admin"
       compactTitle
+      primaryAction={{
+        content: (
+          <div style={{ display: "flex" }}>
+            <Icon source={ExportMinor} color="base" /> Exporter
+          </div>
+        ),
+        onAction: exportToExcel,
+      }}
     >
       <Layout>
         <Layout.Section>
@@ -713,12 +1028,12 @@ export default function LoginPage() {
                   </Text>
                   <Divider borderColor="border" />
                   <Text as="h1">
-                    Chiffre d'affaire des abondements utilisés :{" "}
+                    Total des abondements utilisés :{" "}
                     {stats.total_reductions_use_price} €
                   </Text>
                   <Divider borderColor="border" />
                   <Text as="h1">
-                    Total des abondements utilisés :{" "}
+                    Nombre des abondements utilisés :{" "}
                     {stats.count_reductions_use}
                   </Text>
                 </VerticalStack>
@@ -731,7 +1046,7 @@ export default function LoginPage() {
                   <Divider borderColor="border" />
                   <Text as="h1">Offres : {collections.length} </Text>
                   <Divider borderColor="border" />
-                  <Text as="h1">Employés : {customers.length} </Text>
+                  <Text as="h1">Nombre d'inscrits : {customers.length} </Text>
                   <Divider borderColor="border" />
                   <Text as="h1">Points de retraits : {locations.length} </Text>
                 </VerticalStack>
@@ -741,18 +1056,122 @@ export default function LoginPage() {
         </Layout.Section>
         <Layout.Section>
           <Grid>
-            <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}>
-              <Select
-                options={[
-                  { label: "TOUT LES OFFRES", value: "1" },
-                  ...collections.map((collection) => ({
-                    label: collection.title,
-                    value: collection.id,
-                  })),
-                ]}
-                onChange={(value) => handleSelectChange(value)}
-                value={selected}
-              />
+            <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 3, lg: 6, xl: 6 }}>
+              <LegacyCard title="Offres et Sous-offres">
+                <LegacyCard.Section>
+                  {collections.length > 0 ? (
+                    <VerticalStack>
+                      <VerticalStack key="1">
+                        <Checkbox
+                          label={
+                            <>
+                              <div style={{ display: "flex" }}>
+                                <Icon
+                                  source={CollectionsMajor}
+                                  accessibilityLabel="Collection"
+                                  color="highlight"
+                                />{" "}
+                                TOUTES LES OFFRES
+                              </div>
+                            </>
+                          }
+                          checked={selectedCollections.length === 0}
+                          onChange={() => handleSelectionCollections(1)} // Désélectionne tout
+                        />
+                      </VerticalStack>
+                      {collections
+                        .filter((collection) => {
+                          let foundEmptyParent = false;
+
+                          collection.metafields.forEach((metafield) => {
+                            if (metafield.key === "parent") {
+                              foundEmptyParent = true;
+                            }
+                          });
+
+                          return foundEmptyParent == false;
+                        })
+                        .map(
+                          (collection) =>
+                            (collection.sub_collections.length >= 1 ||
+                              collection.products.length >= 1) && (
+                              <VerticalStack key={collection.id}>
+                                <Checkbox
+                                  label={
+                                    <>
+                                      <div style={{ display: "flex" }}>
+                                        <Icon
+                                          source={CollectionsMajor}
+                                          accessibilityLabel="Collection"
+                                          color="highlight"
+                                        />{" "}
+                                        {collection.title}
+                                      </div>
+                                    </>
+                                  }
+                                  checked={selectedCollections.includes(
+                                    collection.id
+                                  )}
+                                  onChange={() =>
+                                    handleSelectionCollections(collection.id)
+                                  }
+                                />
+                                {renderSubcategories(collection.id)}
+                              </VerticalStack>
+                            )
+                        )}
+                    </VerticalStack>
+                  ) : (
+                    <div style={{ height: "50px", width: "50px" }}>
+                      <Modal
+                        open={collections.length == 0}
+                        loading
+                        small
+                      ></Modal>
+                    </div>
+                  )}
+                </LegacyCard.Section>
+              </LegacyCard>
+            </Grid.Cell>
+            <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 3, lg: 6, xl: 6 }}>
+              <LegacyCard title="CSE">
+                <LegacyCard.Section>
+                  {entreprises.length > 0 ? (
+                    <VerticalStack>
+                      <VerticalStack key="1">
+                        <Checkbox
+                          label="TOUTES LES CSE"
+                          checked={selectedEntreprises.length === 0}
+                          onChange={() => handleSelectionEntreprises(1)} // Désélectionne tout
+                        />
+                      </VerticalStack>
+                      {entreprises.map((entreprise) => (
+                        <VerticalStack key={entreprise.code_cse.value}>
+                          <Checkbox
+                            label={entreprise.company.value}
+                            checked={selectedEntreprises.includes(
+                              entreprise.code_cse.value
+                            )}
+                            onChange={() =>
+                              handleSelectionEntreprises(
+                                entreprise.code_cse.value
+                              )
+                            }
+                          />
+                        </VerticalStack>
+                      ))}
+                    </VerticalStack>
+                  ) : (
+                    <div style={{ height: "50px", width: "50px" }}>
+                      <Modal
+                        open={entreprises.length == 0}
+                        loading
+                        small
+                      ></Modal>
+                    </div>
+                  )}
+                </LegacyCard.Section>
+              </LegacyCard>
             </Grid.Cell>
             <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}>
               <PolarisVizProvider>
