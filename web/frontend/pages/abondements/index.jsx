@@ -177,10 +177,10 @@ export default function AbondementsPage() {
           {initial_value} {currency}
         </IndexTable.Cell>
         <IndexTable.Cell>
-          {balance} {currency}
+          {initial_value - balance} {currency}
         </IndexTable.Cell>
         <IndexTable.Cell>
-          {initial_value - balance} {currency}
+          {balance} {currency}
         </IndexTable.Cell>
         {/* <IndexTable.Cell>{formatDateTime(expires_on)}</IndexTable.Cell> */}
       </IndexTable.Row>
@@ -192,15 +192,10 @@ export default function AbondementsPage() {
       return {
         Code: abondement.note,
         "Date Création": formatDateTime(abondement.created_at),
-        Employé:
-          abondement.customer.firstName + " " + abondement.customer.lastName,
-        Réduction: abondement.initial_value + " " + abondement.currency,
+        Employé: abondement.customer.firstName + " " + abondement.customer.lastName,
+        Montant: abondement.initial_value + " " + abondement.currency,
+        Utilisé: (abondement.initial_value - abondement.balance) + " " + abondement.currency,
         Disponible: abondement.balance + " " + abondement.currency,
-        Utilisé:
-          abondement.initial_value -
-          abondement.balance +
-          " " +
-          abondement.currency,
       };
     });
     const wb = utils.book_new();
@@ -291,8 +286,8 @@ export default function AbondementsPage() {
     { label: "Code", value: "note desc", directionLabel: "Z-A" },
     { label: "Date création", value: "date asc", directionLabel: "A-Z" },
     { label: "Date création", value: "date desc", directionLabel: "Z-A" },
-    { label: "Client", value: "client asc", directionLabel: "A-Z" },
-    { label: "Client", value: "client desc", directionLabel: "Z-A" },
+    { label: "Salarié", value: "client asc", directionLabel: "A-Z" },
+    { label: "Salarié", value: "client desc", directionLabel: "Z-A" },
     { label: "Valeur initiale", value: "initial_value asc", directionLabel: "Croissant" },
     { label: "Valeur initiale", value: "initial_value desc", directionLabel: "Décroissant" },
     { label: "Balance", value: "balance asc", directionLabel: "Croissant" },
@@ -700,9 +695,9 @@ export default function AbondementsPage() {
                   { title: "Code" },
                   { title: "Date Création" },
                   { title: "Employé" },
-                  { title: "Réduction" },
-                  { title: "Disponible" },
+                  { title: "Montant" },
                   { title: "Utilisé" },
+                  { title: "Disponible" },
                   // { title: "Expiration" },
                 ]}
                 bulkActions={bulkActions}

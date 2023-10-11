@@ -26,6 +26,8 @@ import {
   Scrollable,
   OptionList,
   HorizontalStack,
+  Modal,
+  Checkbox,
 } from "@shopify/polaris";
 import {
   PolarisVizProvider,
@@ -35,6 +37,7 @@ import {
   CalendarMinor,
   ImageMajor,
   ArrowRightMinor,
+  CollectionsMajor,
 } from "@shopify/polaris-icons";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Redirect } from "@shopify/app-bridge/actions";
@@ -753,6 +756,83 @@ export default function DashboardPage() {
                 onChange={(value) => handleSelectChange(value)}
                 value={selected}
               />
+            </Grid.Cell>
+            <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}>
+              <LegacyCard title="Offres et Sous-offres">
+                <LegacyCard.Section>
+                  {collections.length > 0 ? (
+                    <VerticalStack>
+                      <VerticalStack id="1">
+                        <Checkbox
+                          label={
+                            <>
+                              <div style={{ display: "flex" }}>
+                                <Icon
+                                  source={CollectionsMajor}
+                                  accessibilityLabel="Collection"
+                                  color="highlight"
+                                />{" "}
+                                TOUTES LES OFFRES
+                              </div>
+                            </>
+                          }
+                          checked={selectedParents.length === 0}
+                          onChange={() => handleParentSelection(1)} // Désélectionne tout
+                        />
+                      </VerticalStack>
+                      {collections
+                        .filter((collection) => {
+                          let foundEmptyParent = false;
+
+                          collection.metafields.forEach((metafield) => {
+                            if (metafield.key === "parent") {
+                              foundEmptyParent = true;
+                            }
+                          });
+
+                          return foundEmptyParent == false;
+                        })
+                        .map(
+                          (collection) =>
+                            (collection.sub_collections.length >= 1 ||
+                              collection.products.length >= 1) && (
+                              <VerticalStack id={collection.id}>
+                                <Checkbox
+                                  label={
+                                    <>
+                                      <div style={{ display: "flex" }}>
+                                        <Icon
+                                          source={CollectionsMajor}
+                                          accessibilityLabel="Collection"
+                                          color="highlight"
+                                        />{" "}
+                                        {collection.title}
+                                      </div>
+                                    </>
+                                  }
+                                  checked={selectedParents.includes(
+                                    collection.id
+                                  )}
+                                  onChange={() =>
+                                    handleParentSelection(collection.id)
+                                  }
+                                />
+                                {renderSubcategories(collection.id)}
+                              </VerticalStack>
+                            )
+                        )}
+                    </VerticalStack>
+                  ) : (
+                    <div style={{ height: "50px", width: "50px" }}>
+                      <Modal
+                        open={collections.length == 0}
+                        loading
+                        small
+                      ></Modal>
+                    </div>
+                  )}
+                </LegacyCard.Section>
+              </LegacyCard>
             </Grid.Cell>
             <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}>
               <PolarisVizProvider>
