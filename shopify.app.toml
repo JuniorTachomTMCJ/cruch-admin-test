@@ -2,7 +2,7 @@
 
 name = "creuch_workspace"
 client_id = "d612b4cff032e7c9374665cb02060548"
-application_url = "https://adjustments-dsc-votes-dock.trycloudflare.com"
+application_url = "https://decorative-quarterly-officials-spouse.trycloudflare.com"
 embedded = true
 
 [access_scopes]
@@ -11,9 +11,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://adjustments-dsc-votes-dock.trycloudflare.com/auth/callback",
-  "https://adjustments-dsc-votes-dock.trycloudflare.com/auth/shopify/callback",
-  "https://adjustments-dsc-votes-dock.trycloudflare.com/api/auth/callback"
+  "https://decorative-quarterly-officials-spouse.trycloudflare.com/auth/callback",
+  "https://decorative-quarterly-officials-spouse.trycloudflare.com/auth/shopify/callback",
+  "https://decorative-quarterly-officials-spouse.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
