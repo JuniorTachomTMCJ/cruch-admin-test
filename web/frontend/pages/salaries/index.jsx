@@ -9,7 +9,6 @@ import {
   Loading,
   TextField,
   LegacyCard,
-  Thumbnail,
   Form,
   Grid,
   FormLayout,
@@ -20,7 +19,6 @@ import {
   useSetIndexFiltersMode,
   ChoiceList,
 } from "@shopify/polaris";
-import { ImageMajor } from "@shopify/polaris-icons";
 import { useState, useEffect, useCallback } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Redirect } from '@shopify/app-bridge/actions';
@@ -29,10 +27,10 @@ export default function ClientsPage() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
 
-  
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [entreprises, setEntreprises] = useState([]);
 
   const resourceName = {
     singular: "Employé CSE",
@@ -52,7 +50,10 @@ export default function ClientsPage() {
   );
 
   const rowMarkup = filteredCustomers.map(
-    ({ id, firstName, lastName, email, phone, metafields }, index) => (
+    (
+      { id, firstName, lastName, email, phone, metafields, entreprise },
+      index
+    ) => (
       <IndexTable.Row
         id={id}
         key={id}
@@ -76,7 +77,7 @@ export default function ClientsPage() {
         </IndexTable.Cell>
         <IndexTable.Cell>{email}</IndexTable.Cell>
         <IndexTable.Cell>{phone}</IndexTable.Cell>
-        <IndexTable.Cell>{metafields["0"]["value"]}</IndexTable.Cell>
+        <IndexTable.Cell>{entreprise ? entreprise.cse_name.value : ""}</IndexTable.Cell>
       </IndexTable.Row>
     )
   );
@@ -103,45 +104,44 @@ export default function ClientsPage() {
     onAction: () => {},
     id: `${item}-${index}`,
     isLocked: index === 0,
-    actions:
-      index === 0
-        ? []
-        : [
-            {
-              type: "rename",
-              onAction: () => {},
-              onPrimaryAction: async (value) => {
-                const newItemsStrings = tabs.map((item, idx) => {
-                  if (idx === index) {
-                    return value;
-                  }
-                  return item.content;
-                });
-                await sleep(1);
-                setItemStrings(newItemsStrings);
-                return true;
-              },
+    actions: index === 0
+      ? []
+      : [
+          {
+            type: "rename",
+            onAction: () => {},
+            onPrimaryAction: async (value) => {
+              const newItemsStrings = tabs.map((item, idx) => {
+                if (idx === index) {
+                  return value;
+                }
+                return item.content;
+              });
+              await sleep(1);
+              setItemStrings(newItemsStrings);
+              return true;
             },
-            {
-              type: "duplicate",
-              onPrimaryAction: async (value) => {
-                await sleep(1);
-                duplicateView(value);
-                return true;
-              },
+          },
+          {
+            type: "duplicate",
+            onPrimaryAction: async (value) => {
+              await sleep(1);
+              duplicateView(value);
+              return true;
             },
-            {
-              type: "edit",
+          },
+          {
+            type: "edit",
+          },
+          {
+            type: "delete",
+            onPrimaryAction: async () => {
+              await sleep(1);
+              deleteView(index);
+              return true;
             },
-            {
-              type: "delete",
-              onPrimaryAction: async () => {
-                await sleep(1);
-                deleteView(index);
-                return true;
-              },
-            },
-          ],
+          },
+        ],
   }));
   const [selected, setSelected] = useState(0);
   const onCreateNewView = async (value) => {
@@ -168,8 +168,8 @@ export default function ClientsPage() {
     { label: "Email", value: "email desc", directionLabel: "Z-A" },
     { label: "Téléphone", value: "phone asc", directionLabel: "Croissant" },
     { label: "Téléphone", value: "phone desc", directionLabel: "Décroissant" },
-    { label: "Code CSE", value: "code_cse asc", directionLabel: "Croissant" },
-    { label: "Code CSE", value: "code_cse desc", directionLabel: "Décroissant" },
+    { label: "CSE", value: "code_cse asc", directionLabel: "Croissant" },
+    { label: "CSE", value: "code_cse desc", directionLabel: "Décroissant" },
   ];
   const [sortSelected, setSortSelected] = useState(["matricule asc"]);
   const handleSortSelected = useCallback(
@@ -219,10 +219,12 @@ export default function ClientsPage() {
           break;
         case "code_cse":
           sortedOrders.sort((a, b) => {
+            let a_entreprise = a.entreprise ? a.entreprise.cse_name.value : "";
+            let b_entreprise = b.entreprise ? b.entreprise.cse_name.value : "";
             if (sortDirection === "asc") {
-              return a.metafields[0].value.localeCompare(b.metafields[0].value);
+              return a_entreprise.localeCompare(b_entreprise);
             } else {
-              return b.metafields[0].value.localeCompare(a.metafields[0].value);
+              return b_entreprise.localeCompare(a_entreprise);
             }
           });
           break;
@@ -235,47 +237,78 @@ export default function ClientsPage() {
   );
 
   const { mode, setMode } = useSetIndexFiltersMode();
-  const onHandleCancel = () => {};
+  const onHandleCancel = () => {
+    setQueryValue("");
+    setFilteredCustomers(customers);
+  };
 
   const onHandleSave = async () => {
     await sleep(1);
     return true;
   };
 
-  const primaryAction =
-    selected === 0
-      ? {
-          type: "save-as",
-          onAction: onCreateNewView,
-          disabled: false,
-          loading: false,
-        }
-      : {
-          type: "save",
-          onAction: onHandleSave,
-          disabled: false,
-          loading: false,
-        };
+  const primaryAction = selected === 0
+    ? {
+        type: "save-as",
+        onAction: onCreateNewView,
+        disabled: false,
+        loading: false,
+      }
+    : {
+        type: "save",
+        onAction: onHandleSave,
+        disabled: false,
+        loading: false,
+      };
+  
   const [queryValue, setQueryValue] = useState("");
+  const [cse, setCse] = useState([]);
+
+  const handleCseChange = useCallback((value) => {
+    setCse(value);
+    const filteredCustomers = customers.filter((customer) => {
+      if (value.length === 0) {
+        return true;
+      }
+      return value.includes(
+        String(customer.entreprise ? customer.entreprise.code_cse.value : "")
+      );
+    });
+
+    setFilteredCustomers(filteredCustomers);
+  }, [customers, filteredCustomers]);
+
+  const handleCseRemove = useCallback(() => {
+    setCse([]);
+    setFilteredCustomers(customers);
+  }, [customers]);
 
   const handleFiltersQueryChange = useCallback(
     (value) => {
       setQueryValue(value);
       const searchValueLower = value.toLowerCase();
+
       if (searchValueLower === "") {
         setFilteredCustomers(customers);
       } else {
-        const filteredCustomers = customers.filter(
-          (customer) =>
-            customer.email.toLowerCase().includes(searchValueLower) ||
-            customer.firstName.toLowerCase().includes(searchValueLower) ||
-            customer.lastName.toLowerCase().includes(searchValueLower) ||
-            customer.phone.toLowerCase().includes(searchValueLower) ||
-            customer.metafields
-              .toString()
-              .toLowerCase()
-              .includes(searchValueLower)
-        );
+        const filteredCustomers = customers.filter((customer) => {
+          const email = String(customer.email).toLowerCase();
+          const firstName = String(customer.firstName).toLowerCase();
+          const lastName = String(customer.lastName).toLowerCase();
+          const phone = String(customer.phone).toLowerCase();
+          const metafields = customer.metafields.toString().toLowerCase();
+          const entreprise = customer.entreprise ? JSON.stringify(customer.entreprise).toLowerCase() : "";
+
+          return (
+            email.includes(searchValueLower) ||
+            firstName.includes(searchValueLower) ||
+            lastName.includes(searchValueLower) ||
+            phone.includes(searchValueLower) ||
+            metafields.includes(searchValueLower) ||
+            entreprise.includes(searchValueLower)
+          );
+        });
+
         setFilteredCustomers(filteredCustomers);
       }
     },
@@ -284,8 +317,79 @@ export default function ClientsPage() {
 
   const handleFiltersQueryClear = useCallback(() => {
     setQueryValue("");
-    setFilteredCustomers(customers);
+    var filteredCustomers = customers;
+    if (cse.length >= 1) {
+      filteredCustomers = filteredCustomers.filter((customer) => {
+        if (cse.length === 0) {
+          return true;
+        }
+        return cse.includes(
+          String(customer.entreprise ? customer.entreprise.code_cse.value : "")
+        );
+      });
+    }
+    setFilteredCustomers(filteredCustomers);
   }, [customers]);
+
+  const filters = [
+    {
+      key: "cse",
+      label: "CSE",
+      filter: (
+        <ChoiceList
+          title="CSE"
+          titleHidden
+          choices={[
+            ...entreprises.map((entreprise) => {
+              return {
+                label: entreprise.cse_name.value,
+                value: entreprise.code_cse.value,
+              };
+            }),
+          ]}
+          selected={cse || []}
+          onChange={handleCseChange}
+          allowMultiple
+        />
+      ),
+      shortcut: true,
+    },
+  ];
+
+  const appliedFilters = [];
+  if (cse && !isEmpty(cse)) {
+    const key = "cse";
+    appliedFilters.push({
+      key,
+      label: disambiguateLabel(key, cse),
+      onRemove: handleCseRemove,
+    });
+  }
+
+  function disambiguateLabel(key, value) {
+    let entrepriseLabels = {};
+
+    entreprises.forEach((entreprise) => {
+      entrepriseLabels[entreprise.code_cse.value] = entreprise.cse_name.value;
+    });
+
+    switch (key) {
+      case "cse":
+        return value
+          .map((val) => entrepriseLabels[val] || "État inconnu")
+          .join(", ");
+      default:
+        return value;
+    }
+  }
+
+  function isEmpty(value) {
+    if (Array.isArray(value)) {
+      return value.length === 0;
+    } else {
+      return value === "" || value == null;
+    }
+  }
 
   const [addOffer, setAddOffer] = useState(false);
   const addOfferModal = useCallback(() => setAddOffer(!addOffer), [addOffer]);
@@ -319,30 +423,43 @@ export default function ClientsPage() {
     addOfferModal();
   }, []);
 
-
-
   const handleQueryValueRemove = useCallback(() => setQueryValue(""), []);
 
-  const handleFiltersClearAll = useCallback(() => {handleQueryValueRemove();}, [handleQueryValueRemove]);
+  const handleFiltersClearAll = useCallback(() => {
+    handleQueryValueRemove();
+    handleCseRemove();
+  }, [handleQueryValueRemove, handleCseRemove]);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      await fetch("https://staging.api.creuch.fr/api/get_global_customers", {
-        method: "GET",
-        headers: {
-          "Content-type": "application/json",
-        },
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          setCustomers(data);
-          setFilteredCustomers(data);
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.log(err.message);
-        });
+      try {
+        const [customersResponse, entreprisesResponse] = await Promise.all([
+          fetch("https://staging.api.creuch.fr/api/get_customers_by_cse", {
+            method: "POST",
+            headers: {
+              "Content-type": "application/json",
+            },
+          }),
+          fetch("https://staging.api.creuch.fr/api/entreprises", {
+            method: "GET",
+            headers: { "Content-type": "application/json" },
+          }),
+        ]);
+
+        const [customersData, entreprisesData] = await Promise.all([
+          customersResponse.json(),
+          entreprisesResponse.json()
+        ]);
+
+        setCustomers(customersData);
+        setFilteredCustomers(customersData);
+        setEntreprises(entreprisesData);
+      } catch (error) {
+        console.error("Erreur de chargement des détails de la collection :", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchData();
@@ -351,16 +468,16 @@ export default function ClientsPage() {
   return (
     <Page
       fullWidth
-      backAction={{ content: "Tableau de bord", url: "/dashboard" }}
+      backAction={{ content: "Tableau de bord", url: "/" }}
       title="Salariés CSE"
       titleMetadata={
         <Badge status="success">{customers.length} Salariés</Badge>
       }
-      subtitle="Gérez les employés de votre CSE"
+      subtitle="Gérez tout les salariés"
       compactTitle
       secondaryActions={[
         {
-          content: "Mettre a jour la base salariale",
+          content: "Mettre à jour la base salariale",
           onAction: addOfferModal,
         },
       ]}
@@ -369,154 +486,126 @@ export default function ClientsPage() {
         <Modal open={isLoading} loading small></Modal>
       </div>
       <div>
-          <Modal
-            open={addOffer}
-            onClose={addOfferModal}
-            title="Ajouter une offre"
-            primaryAction={{
-              content: "Enregistrer",
-              onAction: handleOffreFormSubmit,
-            }}
-            secondaryActions={[
-              {
-                content: "Annuler",
-                onAction: addOfferModal,
-              },
-            ]}
-          >
-            <Modal.Section>
-              <Form>
-                <FormLayout>
-                  <Grid>
-                    <Grid.Cell
-                      columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}
-                    >
-                      <TextField
-                        label="Titre"
-                        placeholder="Entrez le titre"
-                        autoComplete="off"
-                        required="on"
-                      />
-                    </Grid.Cell>
+        <Modal
+          open={addOffer}
+          onClose={addOfferModal}
+          title="Ajouter une offre"
+          primaryAction={{
+            content: "Enregistrer",
+            onAction: handleOffreFormSubmit,
+          }}
+          secondaryActions={[
+            {
+              content: "Annuler",
+              onAction: addOfferModal,
+            },
+          ]}
+        >
+          <Modal.Section>
+            <Form>
+              <FormLayout>
+                <Grid>
+                  <Grid.Cell
+                    columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}
+                  >
+                    <TextField
+                      label="Titre"
+                      placeholder="Entrez le titre"
+                      autoComplete="off"
+                      required="on"
+                    />
+                  </Grid.Cell>
 
-                    <Grid.Cell
-                      columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}
-                    >
-                      <TextField
-                        label="Description"
-                        placeholder="Entrez la description"
-                        multiline={4}
-                        autoComplete="off"
-                        required="on"
-                      />
-                    </Grid.Cell>
+                  <Grid.Cell
+                    columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}
+                  >
+                    <TextField
+                      label="Description"
+                      placeholder="Entrez la description"
+                      multiline={4}
+                      autoComplete="off"
+                      required="on"
+                    />
+                  </Grid.Cell>
 
-                    {/* <Grid.Cell
-                      columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6, xl: 6 }}
+                  {/* <Grid.Cell
+                    columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6, xl: 6 }}
+                  >
+                    <Popover
+                      active={visible1}
+                      autofocusTarget="none"
+                      preferredAlignment="left"
+                      fullWidth
+                      preferInputActivator={false}
+                      preferredPosition="below"
+                      preventCloseOnChildOverlayClick
+                      onClose={handleOnClose1}
+                      activator={
+                        <TextField
+                          role="combobox"
+                          label={"Date début"}
+                          prefix={<Icon source={CalendarMinor} />}
+                          value={formattedValue1}
+                          onFocus={() => setVisible1(true)}
+                          onChange={handleInputValueChange1}
+                          autoComplete="off"
+                        />
+                      }
                     >
-                      <Popover
-                        active={visible1}
-                        autofocusTarget="none"
-                        preferredAlignment="left"
-                        fullWidth
-                        preferInputActivator={false}
-                        preferredPosition="below"
-                        preventCloseOnChildOverlayClick
-                        onClose={handleOnClose1}
-                        activator={
-                          <TextField
-                            role="combobox"
-                            label={"Date début"}
-                            prefix={<Icon source={CalendarMinor} />}
-                            value={formattedValue1}
-                            onFocus={() => setVisible1(true)}
-                            onChange={handleInputValueChange1}
-                            autoComplete="off"
-                          />
-                        }
-                      >
-                        <LegacyCard>
-                          <DatePicker
-                            month1={month1}
-                            year1={year1}
-                            selected={selectedDate1}
-                            onMonthChange={handleMonthChange1}
-                            onChange={handleDateSelection1}
-                          />
-                        </LegacyCard>
-                      </Popover>
-                    </Grid.Cell>
+                      <LegacyCard>
+                        <DatePicker
+                          month1={month1}
+                          year1={year1}
+                          selected={selectedDate1}
+                          onMonthChange={handleMonthChange1}
+                          onChange={handleDateSelection1}
+                        />
+                      </LegacyCard>
+                    </Popover>
+                  </Grid.Cell>
 
-                    <Grid.Cell
-                      columnSpan={{ xs: 6, sm: 6, md: 6, lg: 3, xl: 3 }}
+                  <Grid.Cell
+                    columnSpan={{ xs: 6, sm: 6, md: 6, lg: 3, xl: 3 }}
+                  >
+                    <Popover
+                      active={visible2}
+                      autofocusTarget="none"
+                      preferredAlignment="left"
+                      fullWidth
+                      preferInputActivator={false}
+                      preferredPosition="below"
+                      preventCloseOnChildOverlayClick
+                      onClose={handleOnClose2}
+                      activator={
+                        <TextField
+                          role="combobox"
+                          label={"Date fin"}
+                          prefix={<Icon source={CalendarMinor} />}
+                          value={formattedValue2}
+                          onFocus={() => setVisible2(true)}
+                          onChange={handleInputValueChange2}
+                          autoComplete="off"
+                        />
+                      }
                     >
-                      <Popover
-                        active={visible2}
-                        autofocusTarget="none"
-                        preferredAlignment="left"
-                        fullWidth
-                        preferInputActivator={false}
-                        preferredPosition="below"
-                        preventCloseOnChildOverlayClick
-                        onClose={handleOnClose2}
-                        activator={
-                          <TextField
-                            role="combobox"
-                            label={"Date fin"}
-                            prefix={<Icon source={CalendarMinor} />}
-                            value={formattedValue2}
-                            onFocus={() => setVisible2(true)}
-                            onChange={handleInputValueChange2}
-                            autoComplete="off"
-                          />
-                        }
-                      >
-                        <LegacyCard>
-                          <DatePicker
-                            month2={month2}
-                            year2={year2}
-                            selected={selectedDate2}
-                            onMonthChange={handleMonthChange2}
-                            onChange={handleDateSelection2}
-                          />
-                        </LegacyCard>
-                      </Popover>
-                    </Grid.Cell> */}
-                  </Grid>
-                </FormLayout>
-              </Form>
-            </Modal.Section>
-          </Modal>
-        </div>
+                      <LegacyCard>
+                        <DatePicker
+                          month2={month2}
+                          year2={year2}
+                          selected={selectedDate2}
+                          onMonthChange={handleMonthChange2}
+                          onChange={handleDateSelection2}
+                        />
+                      </LegacyCard>
+                    </Popover>
+                  </Grid.Cell> */}
+                </Grid>
+              </FormLayout>
+            </Form>
+          </Modal.Section>
+        </Modal>
+      </div>
       <Layout>
-        {/*           <Layout.Section>
-          <Grid gap="4" columns={3}>
-            <Grid.Cell columnSpan={{ xs: 3, sm: 3, md: 3, lg: 3, xl: 3 }}>
-              <LegacyCard title={`${count}`} sectioned>
-                <p>Employés inscrits</p>
-              </LegacyCard>
-            </Grid.Cell>
-
-            <Grid.Cell columnSpan={{ xs: 3, sm: 3, md: 3, lg: 3, xl: 3 }}>
-              <LegacyCard title="Clients" sectioned>
-                <p>Employés actifs</p>
-              </LegacyCard>
-            </Grid.Cell>
-
-            <Grid.Cell columnSpan={{ xs: 3, sm: 3, md: 3, lg: 3, xl: 3 }}>
-              <LegacyCard title="Nombres" sectioned>
-                <p>Employés inactifs</p>
-              </LegacyCard>
-            </Grid.Cell>
-
-            <Grid.Cell columnSpan={{ xs: 3, sm: 3, md: 3, lg: 3, xl: 3 }}>
-              <LegacyCard title="Nombres" sectioned>
-                <p>Abondements</p>
-              </LegacyCard>
-            </Grid.Cell>
-          </Grid>
-        </Layout.Section> */}
-
         <Layout.Section>
           <LegacyCard>
             <IndexFilters
@@ -538,8 +627,8 @@ export default function ClientsPage() {
               onSelect={setSelected}
               canCreateNewView
               onCreateNewView={onCreateNewView}
-              filters={[]}
-              appliedFilters={[]}
+              filters={filters}
+              appliedFilters={appliedFilters}
               onClearAll={handleFiltersClearAll}
               mode={mode}
               setMode={setMode}
@@ -557,7 +646,7 @@ export default function ClientsPage() {
                 { title: "Nom et Prénoms" },
                 { title: "Email" },
                 { title: "Numéro de Téléphone" },
-                { title: "Code CSE" },
+                { title: "CSE" },
               ]}
               onNavigation
             >
