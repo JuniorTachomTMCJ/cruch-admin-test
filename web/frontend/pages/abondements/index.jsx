@@ -36,10 +36,10 @@ export default function AbondementsPage() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
 
-
   const [abondements, setAbondements] = useState([]);
   const [filteredAbondements, setFilteredAbondements] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [entreprises, setEntreprises] = useState([]);
   const [code, setCode] = useState("");
   const [initialValue, setInitialValue] = useState("");
   const [salarie, setSalarie] = useState("");
@@ -122,18 +122,7 @@ export default function AbondementsPage() {
     />
   );
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20; // Number of items to show per page
-
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
-  };
-
-  const start = (currentPage - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
-  const paginatedData = filteredAbondements.slice(start, end);
-
-  const rowMarkup = paginatedData.map(
+  const rowMarkup = filteredAbondements.map(
     (
       {
         id,
@@ -143,7 +132,6 @@ export default function AbondementsPage() {
         initial_value,
         balance,
         currency,
-        expires_on,
       },
       index
     ) => (
@@ -178,19 +166,23 @@ export default function AbondementsPage() {
         <IndexTable.Cell>
           {balance} {currency}
         </IndexTable.Cell>
-        {/* <IndexTable.Cell>{formatDateTime(expires_on)}</IndexTable.Cell> */}
       </IndexTable.Row>
     )
   );
 
   const exportToExcel = async () => {
-    const tableau = paginatedData.map((abondement, index) => {
+    const tableau = filteredAbondements.map((abondement, index) => {
       return {
         Code: abondement.note,
         "Date Création": formatDateTime(abondement.created_at),
-        Employé: abondement.customer.firstName + " " + abondement.customer.lastName,
+        Employé:
+          abondement.customer.firstName + " " + abondement.customer.lastName,
         Montant: abondement.initial_value + " " + abondement.currency,
-        Utilisé: (abondement.initial_value - abondement.balance) + " " + abondement.currency,
+        Utilisé:
+          abondement.initial_value -
+          abondement.balance +
+          " " +
+          abondement.currency,
         Disponible: abondement.balance + " " + abondement.currency,
       };
     });
@@ -284,12 +276,12 @@ export default function AbondementsPage() {
     { label: "Date création", value: "date desc", directionLabel: "Z-A" },
     { label: "Salarié", value: "client asc", directionLabel: "A-Z" },
     { label: "Salarié", value: "client desc", directionLabel: "Z-A" },
-    { label: "Valeur initiale", value: "initial_value asc", directionLabel: "Croissant" },
-    { label: "Valeur initiale", value: "initial_value desc", directionLabel: "Décroissant" },
-    { label: "Balance", value: "balance asc", directionLabel: "Croissant" },
-    { label: "Balance", value: "balance desc", directionLabel: "Décroissant" },
-    { label: "Expiration", value: "expires_on asc", directionLabel: "A-Z" },
-    { label: "Expiration", value: "expires_on desc", directionLabel: "Z-A" },
+    { label: "Montant", value: "initial_value asc", directionLabel: "Croissant" },
+    { label: "Montant", value: "initial_value desc", directionLabel: "Décroissant" },
+    { label: "Disponible", value: "balance asc", directionLabel: "Croissant" },
+    { label: "Disponible", value: "balance desc", directionLabel: "Décroissant" },
+    { label: "Utilisé", value: "utilise asc", directionLabel: "Croissant" },
+    { label: "Utilisé", value: "utilise desc", directionLabel: "Décroissant" },
   ];
   const [sortSelected, setSortSelected] = useState(["note asc"]);
   const handleSortSelected = useCallback(
@@ -347,14 +339,12 @@ export default function AbondementsPage() {
             }
           });
           break;
-        case "expires_on":
+        case "utilise":
           sortedOrders.sort((a, b) => {
-            const dateA = new Date(a.expires_on);
-            const dateB = new Date(b.expires_on);
             if (sortDirection === "asc") {
-              return dateA - dateB;
+              return (a.initial_value - a.balance) - (b.initial_value - b.balance);
             } else {
-              return dateB - dateA;
+              return (b.initial_value - b.balance) - (a.initial_value - a.balance);
             }
           });
           break;
@@ -367,7 +357,10 @@ export default function AbondementsPage() {
   );
 
   const { mode, setMode } = useSetIndexFiltersMode();
-  const onHandleCancel = () => {};
+  const onHandleCancel = () => {
+    setCse([]);
+    setFilteredAbondements(abondements);
+  };
 
   const onHandleSave = async () => {
     await sleep(1);
@@ -389,6 +382,31 @@ export default function AbondementsPage() {
           loading: false,
         };
   const [queryValue, setQueryValue] = useState("");
+  const [cse, setCse] = useState([]);
+
+  const handleCseChange = useCallback(
+    (value) => {
+      setCse(value);
+      const filteredAbondements = abondements.filter((abondement) => {
+        if (value.length === 0) {
+          return true;
+        }
+        return value.includes(
+          String(
+            abondement.customer ? abondement.customer.metafields[0].value : ""
+          )
+        );
+      });
+
+      setFilteredAbondements(filteredAbondements);
+    },
+    [abondements, filteredAbondements]
+  );
+
+  const handleCseRemove = useCallback(() => {
+    setCse([]);
+    setFilteredAbondements(abondements);
+  }, [abondements]);
 
   const handleFiltersQueryChange = useCallback(
     (value) => {
@@ -403,13 +421,21 @@ export default function AbondementsPage() {
             `${abondement.customer.firstName} ${abondement.customer.lastName}`
               .toLowerCase()
               .includes(searchValueLower) ||
-            abondement.balance.toString().toLowerCase().includes(searchValueLower) ||
+            abondement.balance
+              .toString()
+              .toLowerCase()
+              .includes(searchValueLower) ||
             abondement.initial_value
               .toString()
               .toLowerCase()
               .includes(searchValueLower) ||
-            (abondement.disabled_at &&
-              abondement.disabled_at.toLowerCase().includes(searchValueLower))
+            (abondement.initial_value - abondement.balance)
+              .toString()
+              .toLowerCase()
+              .includes(searchValueLower)
+          // ||
+          // (abondement.disabled_at &&
+          //   abondement.disabled_at.toLowerCase().includes(searchValueLower))
         );
         setFilteredAbondements(filteredAbondements);
       }
@@ -422,43 +448,120 @@ export default function AbondementsPage() {
     setFilteredAbondements(abondements);
   }, [abondements]);
 
+  const filters = [
+    {
+      key: "cse",
+      label: "CSE",
+      filter: (
+        <ChoiceList
+          title="CSE"
+          titleHidden
+          choices={[
+            ...entreprises.map((entreprise) => {
+              return {
+                label: entreprise.cse_name.value,
+                value: entreprise.code_cse.value,
+              };
+            }),
+          ]}
+          selected={cse || []}
+          onChange={handleCseChange}
+          allowMultiple
+        />
+      ),
+      shortcut: true,
+    },
+  ];
+
+  const appliedFilters = [];
+  if (cse && !isEmpty(cse)) {
+    const key = "cse";
+    appliedFilters.push({
+      key,
+      label: disambiguateLabel(key, cse),
+      onRemove: handleCseRemove,
+    });
+  }
+
+  function disambiguateLabel(key, value) {
+    let entrepriseLabels = {};
+
+    entreprises.forEach((entreprise) => {
+      entrepriseLabels[entreprise.code_cse.value] = entreprise.cse_name.value;
+    });
+
+    switch (key) {
+      case "cse":
+        return value
+          .map((val) => entrepriseLabels[val] || "État inconnu")
+          .join(", ");
+      default:
+        return value;
+    }
+  }
+
+  function isEmpty(value) {
+    if (Array.isArray(value)) {
+      return value.length === 0;
+    } else {
+      return value === "" || value == null;
+    }
+  }
+
   const handleQueryValueRemove = useCallback(() => setQueryValue(""), []);
 
-  const handleFiltersClearAll = useCallback(() => {handleQueryValueRemove();}, [handleQueryValueRemove]);
+  const handleFiltersClearAll = useCallback(() => {
+    handleQueryValueRemove();
+    handleCseRemove();
+  }, [handleQueryValueRemove, handleCseRemove]);
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [abondementsResponse, customersResponse] = await Promise.all([
-        fetch("https://staging.api.creuch.fr/api/get_gift_cards", {
-          method: "POST",
-          headers: {
-            "Content-type": "application/json",
-          },
-        }),
-        fetch("https://staging.api.creuch.fr/api/get_customers_by_cse", {
-          method: "POST",
-          headers: {
-            "Content-type": "application/json",
-          },
-        }),
-      ]);
-
-      const abondementsData = await abondementsResponse.json();
-      const customersData = await customersResponse.json();
-
-      console.log("Abondements", abondementsData);
-      console.log("Customers", customersData);
-
-      setAbondements(abondementsData);
-      setFilteredAbondements(abondementsData);
-      setCustomers(customersData);
-    } catch (error) {
-      console.error("Erreur lors du chargement des données :", error);
-    }
-    setIsLoading(false);
-  };
   useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [abondementsResponse, customersResponse, entreprisesResponse] =
+          await Promise.all([
+            fetch("https://staging.api.creuch.fr/api/get_gift_cards", {
+              method: "POST",
+              headers: {
+                "Content-type": "application/json",
+              },
+            }),
+            fetch("https://staging.api.creuch.fr/api/get_customers_by_cse", {
+              method: "POST",
+              headers: {
+                "Content-type": "application/json",
+              },
+            }),
+            fetch("https://staging.api.creuch.fr/api/entreprises", {
+              method: "GET",
+              headers: {
+                "Content-type": "application/json",
+              },
+            }),
+          ]);
+
+        const [abondementsData, customersData, entreprisesData] =
+          await Promise.all([
+            abondementsResponse.json(),
+            customersResponse.json(),
+            entreprisesResponse.json(),
+          ]);
+
+        console.log("Abondements", abondementsData);
+        console.log("Customers", customersData);
+        console.log("Entreprises", entreprisesData);
+
+        setAbondements(abondementsData);
+        setFilteredAbondements(abondementsData);
+        setCustomers(customersData);
+        setEntreprises(entreprisesData);
+      } catch (error) {
+        console.error("Erreur lors du chargement des données :", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     fetchData();
   }, []);
   
@@ -466,10 +569,18 @@ export default function AbondementsPage() {
     <Frame>
       <Page
         fullWidth
-        backAction={{ content: "Tableau de bord", url: "/dashboard" }}
+        backAction={{ content: "Tableau de bord", url: "/" }}
         title="Abondements"
         subtitle="Gérez les abondements de vos salariés"
         compactTitle
+        primaryAction={{
+          content: (
+            <div style={{ display: "flex" }}>
+              <Icon source={ExportMinor} color="base" /> Exporter
+            </div>
+          ),
+          onAction: exportToExcel,
+        }}
         secondaryActions={[
           {
             content: "Ajouter un abondement",
@@ -550,28 +661,6 @@ export default function AbondementsPage() {
         </div>
         <Layout>
           <Layout.Section>
-            <Grid>
-              <Grid.Cell columnSpan={{ xs: 5, sm: 5, md: 5, lg: 11, xl: 11 }}>
-                <Pagination
-                  onPrevious={() => handlePageChange(currentPage - 1)}
-                  onNext={() => handlePageChange(currentPage + 1)}
-                  type="table"
-                  hasNext={end < filteredAbondements.length}
-                  hasPrevious={currentPage > 1}
-                  label={`${start}-${end} sur ${filteredAbondements.length} abondements`}
-                />
-              </Grid.Cell>
-              <Grid.Cell columnSpan={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 1 }}>
-                <Tooltip content="Exporter le tableau">
-                  <Button onClick={exportToExcel} size="medium" primary>
-                    <Icon source={ExportMinor} color="base" /> Exporter
-                  </Button>
-                </Tooltip>
-              </Grid.Cell>
-            </Grid>
-          </Layout.Section>
-          <br />
-          <Layout.Section>
             <LegacyCard>
               <IndexFilters
                 sortOptions={sortOptions}
@@ -592,15 +681,15 @@ export default function AbondementsPage() {
                 onSelect={setSelected}
                 canCreateNewView
                 onCreateNewView={onCreateNewView}
-                filters={[]}
-                appliedFilters={[]}
+                filters={filters}
+                appliedFilters={appliedFilters}
                 onClearAll={handleFiltersClearAll}
                 mode={mode}
                 setMode={setMode}
               />
               <IndexTable
                 resourceName={resourceName}
-                itemCount={paginatedData.length}
+                itemCount={filteredAbondements.length}
                 selectedItemsCount={
                   allResourcesSelected ? "All" : selectedResources.length
                 }
@@ -609,11 +698,10 @@ export default function AbondementsPage() {
                 headings={[
                   { title: "Code" },
                   { title: "Date Création" },
-                  { title: "Employé" },
+                  { title: "Salarié" },
                   { title: "Montant" },
                   { title: "Utilisé" },
                   { title: "Disponible" },
-                  // { title: "Expiration" },
                 ]}
                 bulkActions={bulkActions}
                 onNavigation

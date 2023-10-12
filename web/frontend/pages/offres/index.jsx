@@ -25,6 +25,7 @@ import {
   IndexFilters,
   Pagination,
   Tooltip,
+  ChoiceList,
 } from "@shopify/polaris";
 import { CalendarMinor, ImageMajor, ExportMinor } from "@shopify/polaris-icons";
 import { useState, useEffect, useCallback } from "react";
@@ -37,10 +38,9 @@ export default function OffresPage() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
   
-
-
   const [offres, setOffres] = useState([]);
   const [filteredOffres, setFilteredOffres] = useState([]);
+  const [entreprises, setEntreprises] = useState([]);
   const [addOffer, setAddOffer] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -140,18 +140,7 @@ export default function OffresPage() {
       />
   );
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20; // Number of items to show per page
-
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
-  };
-
-  const start = (currentPage - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
-  const paginatedData = filteredOffres.slice(start, end);
-
-  const rowMarkup = paginatedData.map(
+  const rowMarkup = filteredOffres.map(
     ({ id, title, description, image }, index) => (
       <IndexTable.Row
         id={id}
@@ -183,11 +172,11 @@ export default function OffresPage() {
   );
 
   const exportToExcel = async () => {
-    const tableau = paginatedData.map((offre, index) => {
+    const tableau = filteredOffres.map((offre, index) => {
       return {
         Image: offre.image ? offre.image.url : "Aucun",
         Titre: offre.title,
-        Description: offre.description
+        Description: offre.description,
       };
     });
     const wb = utils.book_new();
@@ -321,7 +310,10 @@ export default function OffresPage() {
   );
 
   const { mode, setMode } = useSetIndexFiltersMode();
-  const onHandleCancel = () => {};
+  const onHandleCancel = () => {
+    setCse([]);
+    setFilteredOffres(offres);
+  };
 
   const onHandleSave = async () => {
     await sleep(1);
@@ -343,6 +335,32 @@ export default function OffresPage() {
           loading: false,
         };
   const [queryValue, setQueryValue] = useState("");
+  const [cse, setCse] = useState([]);
+
+  const handleCseChange = useCallback((value) => {
+    setCse(value);
+    const filteredOffres = offres.filter((offre) => {
+      if (value.length === 0) {
+        return true;
+      }
+      const entrepriseIds = offre.metafields.find(
+        (metafield) => metafield.key === "entreprises_ids"
+      );
+
+      if (entrepriseIds) {
+        const ids = JSON.parse(entrepriseIds.value).ids;
+        return ids.some((id) => value.includes(id));
+      }
+
+      return false;
+    });
+    setFilteredOffres(filteredOffres);
+  }, [offres, filteredOffres]);
+
+  const handleCseRemove = useCallback(() => {
+    setCse([]);
+    setFilteredOffres(offres);
+  }, [offres]);
 
   const handleFiltersQueryChange = useCallback(
     (value) => {
@@ -367,30 +385,108 @@ export default function OffresPage() {
     setFilteredOffres(offres);
   }, [offres]);
 
+  const filters = [
+    {
+      key: "cse",
+      label: "CSE",
+      filter: (
+        <ChoiceList
+          title="CSE"
+          titleHidden
+          choices={[
+            ...entreprises.map((entreprise) => {
+              return {
+                label: entreprise.cse_name.value,
+                value: entreprise.code_cse.value,
+              };
+            }),
+          ]}
+          selected={cse || []}
+          onChange={handleCseChange}
+          allowMultiple
+        />
+      ),
+      shortcut: true,
+    },
+  ];
+
+  const appliedFilters = [];
+  if (cse && !isEmpty(cse)) {
+    const key = "cse";
+    appliedFilters.push({
+      key,
+      label: disambiguateLabel(key, cse),
+      onRemove: handleCseRemove,
+    });
+  }
+
+  function disambiguateLabel(key, value) {
+    let entrepriseLabels = {};
+
+    entreprises.forEach((entreprise) => {
+      entrepriseLabels[entreprise.code_cse.value] = entreprise.cse_name.value;
+    });
+
+    switch (key) {
+      case "cse":
+        return value
+          .map((val) => entrepriseLabels[val] || "État inconnu")
+          .join(", ");
+      default:
+        return value;
+    }
+  }
+
+  function isEmpty(value) {
+    if (Array.isArray(value)) {
+      return value.length === 0;
+    } else {
+      return value === "" || value == null;
+    }
+  }
+
   const handleQueryValueRemove = useCallback(() => setQueryValue(""), []);
 
-  const handleFiltersClearAll = useCallback(() => { handleQueryValueRemove(); }, [handleQueryValueRemove]);
+  const handleFiltersClearAll = useCallback(() => {
+    handleQueryValueRemove();
+    handleCseRemove();
+  }, [handleQueryValueRemove, handleCseRemove]);
 
   const fetchData = async () => {
     setIsLoading(true);
-    await fetch(
-      "https://staging.api.creuch.fr/api/get_entreprise_collections",
-      {
-        method: "POST",
-        headers: {
-          "Content-type": "application/json",
-        },
-      }
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        setOffres(data);
-        setFilteredOffres(data);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
+    try {
+      const [offresResponse, entreprisesResponse] =
+        await Promise.all([
+          fetch("https://staging.api.creuch.fr/api/get_entreprise_collections", {
+            method: "POST",
+            headers: {
+              "Content-type": "application/json",
+            },
+          }),
+          fetch("https://staging.api.creuch.fr/api/entreprises", {
+            method: "GET",
+            headers: {
+              "Content-type": "application/json",
+            },
+          }),
+        ]);
+
+      const [offresData, entreprisesData] = await Promise.all([
+        offresResponse.json(),
+        entreprisesResponse.json(),
+      ]);
+
+      console.log("Offres", offresData);
+      console.log("Entreprises", entreprisesData);
+
+      setOffres(offresData);
+      setFilteredOffres(offresData);
+      setEntreprises(entreprisesData);
+    } catch (error) {
+      console.error("Erreur lors du chargement des données :", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -419,6 +515,14 @@ export default function OffresPage() {
         titleMetadata={<Badge status="success">{offres.length} Offres</Badge>}
         subtitle="Gérez les collections de votre CSE"
         compactTitle
+        primaryAction={{
+          content: (
+            <div style={{ display: "flex" }}>
+              <Icon source={ExportMinor} color="base" /> Exporter
+            </div>
+          ),
+          onAction: exportToExcel,
+        }}
         secondaryActions={[
           {
             content: "Ajouter une offre",
@@ -555,28 +659,6 @@ export default function OffresPage() {
         </div>
         <Layout>
           <Layout.Section>
-            <Grid>
-              <Grid.Cell columnSpan={{ xs: 5, sm: 5, md: 5, lg: 11, xl: 11 }}>
-                <Pagination
-                  onPrevious={() => handlePageChange(currentPage - 1)}
-                  onNext={() => handlePageChange(currentPage + 1)}
-                  type="table"
-                  hasNext={end < filteredOffres.length}
-                  hasPrevious={currentPage > 1}
-                  label={`${start}-${end} sur ${filteredOffres.length} offres`}
-                />
-              </Grid.Cell>
-              <Grid.Cell columnSpan={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 1 }}>
-                <Tooltip content="Exporter le tableau">
-                  <Button onClick={exportToExcel} size="medium" primary>
-                    <Icon source={ExportMinor} color="base" /> Exporter
-                  </Button>
-                </Tooltip>
-              </Grid.Cell>
-            </Grid>
-          </Layout.Section>
-          <br />
-          <Layout.Section>
             <LegacyCard>
               <IndexFilters
                 sortOptions={sortOptions}
@@ -597,15 +679,15 @@ export default function OffresPage() {
                 onSelect={setSelected}
                 canCreateNewView
                 onCreateNewView={onCreateNewView}
-                filters={[]}
-                appliedFilters={[]}
+                filters={filters}
+                appliedFilters={appliedFilters}
                 onClearAll={handleFiltersClearAll}
                 mode={mode}
                 setMode={setMode}
               />
               <IndexTable
                 resourceName={resourceName}
-                itemCount={paginatedData.length}
+                itemCount={filteredOffres.length}
                 selectedItemsCount={
                   allResourcesSelected ? "All" : selectedResources.length
                 }

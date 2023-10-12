@@ -18,10 +18,14 @@ import {
   IndexFilters,
   useSetIndexFiltersMode,
   ChoiceList,
+  Icon,
 } from "@shopify/polaris";
+import { ImageMajor, ExportMinor } from "@shopify/polaris-icons";
 import { useState, useEffect, useCallback } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Redirect } from '@shopify/app-bridge/actions';
+import { utils, writeFileXLSX } from "xlsx";
+export { utils, writeFileXLSX };
 
 export default function ClientsPage() {
   const app = useAppBridge();
@@ -81,6 +85,22 @@ export default function ClientsPage() {
       </IndexTable.Row>
     )
   );
+
+  const exportToExcel = async () => {
+    const tableau = filteredCustomers.map((customer, index) => {
+      return {
+        Matricule: customer.metafields["1"]["value"],
+        "Nom et Prénoms": customer.lastName + " " + customer.firstName,
+        Email: customer.email,
+        "Numéro de Téléphone": customer.phone,
+        "Code CSE": customer.entreprise ? customer.entreprise.cse_name.value : "",
+      };
+    });
+    const wb = utils.book_new();
+    const ws = utils.json_to_sheet(tableau);
+    utils.book_append_sheet(wb, ws, "Sheet1");
+    writeFileXLSX(wb, "Salariés.xlsx");
+  };
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const [itemStrings, setItemStrings] = useState(["Toutes"]);
@@ -451,7 +471,7 @@ export default function ClientsPage() {
           customersResponse.json(),
           entreprisesResponse.json()
         ]);
-
+        console.log(customersData);
         setCustomers(customersData);
         setFilteredCustomers(customersData);
         setEntreprises(entreprisesData);
@@ -475,6 +495,14 @@ export default function ClientsPage() {
       }
       subtitle="Gérez tout les salariés"
       compactTitle
+      primaryAction={{
+        content: (
+          <div style={{ display: "flex" }}>
+            <Icon source={ExportMinor} color="base" /> Exporter
+          </div>
+        ),
+        onAction: exportToExcel,
+      }}
       secondaryActions={[
         {
           content: "Mettre à jour la base salariale",

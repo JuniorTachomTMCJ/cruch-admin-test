@@ -805,7 +805,7 @@ export default function LoginPage() {
           stats.total_reductions_use_price + " €",
         "Total des abondements utilisés": stats.count_reductions_use,
         Offres: collections.length,
-        Employés: customers.length,
+        "Nombre d'inscrits": customers.length,
         "Points de retraits": locations.length,
       },
     ];

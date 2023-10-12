@@ -34,19 +34,12 @@ export default function OrdersPage() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
 
-  
-  
   const [isLoading, setIsLoading] = useState(true);
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
-  const [select, setSelect] = useState('');
-  const options = [];
-
+  const [entreprises, setEntreprises] = useState([]);
   const [cse, setCse] = useState([]);
   
-
-
-
   function formatDateTime(dateTimeString) {
     const inputDate = new Date(dateTimeString);
     const options = {
@@ -152,18 +145,7 @@ export default function OrdersPage() {
     }
   }
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
-
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
-  };
-
-  const start = (currentPage - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
-  const paginatedData = filteredOrders.slice(start, end);
-
-  const rowMarkup = paginatedData.map((order, index) => (
+  const rowMarkup = filteredOrders.map((order, index) => (
     <IndexTable.Row
       id={order.id}
       key={order.id}
@@ -212,7 +194,7 @@ export default function OrdersPage() {
   ));
 
   const exportToExcel = async () => {
-    const tableau = paginatedData.map((order, index) => {
+    const tableau = filteredOrders.map((order, index) => {
       const status = order.financial_status;
       const status_order = order.fulfillment_status;
       return {
@@ -443,7 +425,10 @@ export default function OrdersPage() {
   );
 
   const {mode, setMode} = useSetIndexFiltersMode();
-  const onHandleCancel = () => {};
+  const onHandleCancel = () => {
+    setCse([]);
+    setFilteredOrders(orders);
+  };
 
   const onHandleSave = async () => {
     await sleep(1);
@@ -465,8 +450,6 @@ export default function OrdersPage() {
           loading: false,
         };
   
-  
-       
   const [commandeStatus, setCommandeStatus] = useState([]);
   const [paiementStatus, setPaiementStatus] = useState([]);
   const [queryValue, setQueryValue] = useState('');
@@ -578,15 +561,37 @@ export default function OrdersPage() {
     setFilteredOrders(filteredOrders);
   }, [orders]);
 
+  const handleCseChange = useCallback(
+    (value) => {
+      setCse(value);
+      const filteredOrders = orders.filter((order) => {
+        if (value.length === 0) {
+          return true;
+        }
+        return value.includes(String(order.client.entreprise.code_cse.value));
+      });
+
+      setFilteredOrders(filteredOrders);
+    },
+    [orders, filteredOrders]
+  );
+
+  const handleCseRemove = useCallback(() => {
+    setCse([]);
+    setFilteredOrders(orders);
+  }, [orders]);
+
   const handleQueryValueRemove = useCallback(() => setQueryValue(''), []);
 
   const handleFiltersClearAll = useCallback(() => {
     handleCommandeStatusRemove();
     handlePaiementStatusRemove();
+    handleCseRemove();
     handleQueryValueRemove();
   }, [
     handleCommandeStatusRemove,
     handlePaiementStatusRemove,
+    handleCseRemove,
     handleQueryValueRemove,
   ]);
 
@@ -632,6 +637,28 @@ export default function OrdersPage() {
       ),
       shortcut: true,
     },
+    {
+      key: "cse",
+      label: "CSE",
+      filter: (
+        <ChoiceList
+          title="CSE"
+          titleHidden
+          choices={[
+            ...entreprises.map((entreprise) => {
+              return {
+                label: entreprise.cse_name.value,
+                value: entreprise.code_cse.value,
+              };
+            }),
+          ]}
+          selected={cse || []}
+          onChange={handleCseChange}
+          allowMultiple
+        />
+      ),
+      shortcut: true,
+    },
   ];
 
   const appliedFilters = [];
@@ -651,41 +678,63 @@ export default function OrdersPage() {
       onRemove: handlePaiementStatusRemove,
     });
   }
+  if (cse && !isEmpty(cse)) {
+    const key = "cse";
+    appliedFilters.push({
+      key,
+      label: disambiguateLabel(key, cse),
+      onRemove: handleCseRemove,
+    });
+  }
 
   function disambiguateLabel(key, value) {
+    let entrepriseLabels = {};
+
+    entreprises.forEach((entreprise) => {
+      entrepriseLabels[entreprise.code_cse.value] = entreprise.cse_name.value;
+    });
+
     switch (key) {
-      case 'commandeStatus':
-        return value.map((val) => {
-          switch (val) {
-            case "fulfilled":
-              return "Traitée";
-            case "null":
-              return "En cours";
-            case "partial":
-              return "Traitement partielle";
-            case "restocked":
-              return "Restockage";
-            default:
-              return "État inconnu";
-          }
-        }).join(", ");
-      case 'paiementStatus':
-        return value.map((val) => {
-          switch (val) {
-            case "paid":
-              return "Payée";
-            case "partially_refunded":
-              return "Partiellement remboursée";
-            case "partially_paid":
-              return "Partiellement payée";
-            case "refunded":
-              return "Remboursée";
-            case "pending":
-              return "En cours";
-            default:
-              return "État inconnu";
-          }
-        }).join(", ");
+      case "commandeStatus":
+        return value
+          .map((val) => {
+            switch (val) {
+              case "fulfilled":
+                return "Traitée";
+              case "null":
+                return "En cours";
+              case "partial":
+                return "Traitement partielle";
+              case "restocked":
+                return "Restockage";
+              default:
+                return "État inconnu";
+            }
+          })
+          .join(", ");
+      case "paiementStatus":
+        return value
+          .map((val) => {
+            switch (val) {
+              case "paid":
+                return "Payée";
+              case "partially_refunded":
+                return "Partiellement remboursée";
+              case "partially_paid":
+                return "Partiellement payée";
+              case "refunded":
+                return "Remboursée";
+              case "pending":
+                return "En cours";
+              default:
+                return "État inconnu";
+            }
+          })
+          .join(", ");
+      case "cse":
+        return value
+          .map((val) => entrepriseLabels[val] || "État inconnu")
+          .join(", ");
       default:
         return value;
     }
@@ -699,72 +748,41 @@ export default function OrdersPage() {
     }
   }
 
-  const handleSelectChange = useCallback(
-  async (value) => {
-      console.log(value);
-      setIsLoading(true);
-      await fetch("https://staging.api.creuch.fr/api/get_orders", {
-        method: "POST",
-        body: JSON.stringify({ cse: value }),
-        headers: { "Content-type": "application/json" },
-      })
-        .then((response) => response.json())
-        .then((orders) => {
-          console.log("orders", orders);
-          setOrders(orders);
-          setFilteredOrders(orders);
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.log(err.message);
-        });
-    }
-  );
-
-  const handleCodeChange = useCallback((value) => setCode(value), []);
-
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      await fetch("https://staging.api.creuch.fr/api/get_orders", {
-        method: "POST",
-        headers: { "Content-type": "application/json" },
-      })
-        .then((response) => response.json())
-        .then((orders) => {
-          console.log("orders", orders);
-          setOrders(orders);
-          setFilteredOrders(orders);
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.log(err.message);
-        });
+      try {
+        const [ordersResponse, entreprisesResponse] = await Promise.all([
+          fetch("https://staging.api.creuch.fr/api/get_orders", {
+            method: "POST",
+            headers: {
+              "Content-type": "application/json"
+            },
+          }),
+          fetch("https://staging.api.creuch.fr/api/entreprises", {
+            method: "GET",
+            headers: {
+              "Content-type": "application/json",
+            },
+          }),
+        ]);
 
+        const [ordersData, entreprisesData] = await Promise.all([
+          ordersResponse.json(),
+          entreprisesResponse.json(),
+        ]);
 
-        await fetch("https://staging.api.creuch.fr/api/entreprises", {
-          method: "GET",
-          headers: { "Content-type": "application/json" },
-        })
-          .then((response) => response.json())
-          .then((datas) => {
-            console.log("orders", datas);
-            
-            for (let i = 0; i < datas.length; i++) {
-             // console.log("iiiiii", i)
-              let item = {
-                label : datas[i].cse_name.value,
-                value : datas[i].code_cse.value
-              }
-              options.push(item);
-            } 
-            console.log("options", options);
-            setCse(options);
-          })
-          .catch((err) => {
-            console.log(err.message);
-          });
+        console.log("Orders", ordersData);
+        console.log("Entreprises", entreprisesData);
 
+        setOrders(ordersData);
+        setFilteredOrders(ordersData);
+        setEntreprises(entreprisesData);
+      } catch (error) {
+        console.error("Erreur lors du chargement des données :", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchData();
@@ -778,49 +796,19 @@ export default function OrdersPage() {
       titleMetadata={<Badge status="success">{orders.length} Commandes</Badge>}
       subtitle="Gérez les commandes de votre CSE"
       compactTitle
-      secondaryActions={[
-        {
-          content: (
-            <div style={{ display: "inline-flex", alignItems: "center" }}>
-              <div style={{ marginRight: "10px" }}>
-              <Select
-                  label="Filtrer par CSE"
-                  options={cse}
-                  onChange={handleSelectChange}
-                  value={select}
-                />
-              </div>
-            </div>
-          ),
-        },
-      ]}
+      primaryAction={{
+        content: (
+          <div style={{ display: "flex" }}>
+            <Icon source={ExportMinor} color="base" /> Exporter
+          </div>
+        ),
+        onAction: exportToExcel,
+      }}
     >
       <div>
         <Modal open={isLoading} loading small></Modal>
       </div>
       <Layout>
-        <Layout.Section>
-          <Grid>
-            <Grid.Cell columnSpan={{ xs: 5, sm: 5, md: 5, lg: 11, xl: 11 }}>
-              <Pagination
-                onPrevious={() => handlePageChange(currentPage - 1)}
-                onNext={() => handlePageChange(currentPage + 1)}
-                type="table"
-                hasNext={end < filteredOrders.length}
-                hasPrevious={currentPage > 1}
-                label={`${start}-${end} sur ${filteredOrders.length} commandes`}
-              />
-            </Grid.Cell>
-            <Grid.Cell columnSpan={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 1 }}>
-              <Tooltip content="Exporter le tableau">
-                <Button onClick={exportToExcel} size="medium" primary>
-                  <Icon source={ExportMinor} color="base" /> Exporter
-                </Button>
-              </Tooltip>
-            </Grid.Cell>
-          </Grid>
-        </Layout.Section>
-        <br />
         <Layout.Section>
           <LegacyCard>
             <IndexFilters
@@ -850,7 +838,7 @@ export default function OrdersPage() {
             />
             <IndexTable
               resourceName={resourceName}
-              itemCount={paginatedData.length}
+              itemCount={filteredOrders.length}
               selectedItemsCount={
                 allResourcesSelected ? "All" : selectedResources.length
               }
