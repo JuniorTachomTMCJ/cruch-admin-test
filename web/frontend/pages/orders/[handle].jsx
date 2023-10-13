@@ -26,6 +26,7 @@ import {
   useIndexResourceState,
   ResourceList,
   Thumbnail,
+  List,
 } from "@shopify/polaris";
 import {
   EditMajor,
@@ -46,6 +47,7 @@ export default function OrderDetail() {
     shipping_lines: [],
     line_items: [],
     discount_codes: [],
+    payment_gateway_names: [],
   });
   const [isLoading, setIsLoading] = useState(false);
   const [activeOne, setActiveOne] = useState(false);
@@ -56,6 +58,7 @@ export default function OrderDetail() {
   const handleAlert = useCallback(() => setAlert(!alert), [alert]);
 
   const handleChangeStatus = useCallback(async (handle, product_id, statut) => {
+    setIsLoading(true);
     await fetch(`https://staging.api.creuch.fr/api/update_order_product_status`, {
       method: "POST",
       body: JSON.stringify({
@@ -85,6 +88,36 @@ export default function OrderDetail() {
         toggleActiveOne();
       });
   }, []);
+
+  const handleCancelOrder = useCallback(async () => {
+    setIsLoading(true);
+    await fetch(`https://staging.api.creuch.fr/api/cancel_order`, {
+      method: "POST",
+      body: JSON.stringify({
+        id: handle
+      }),
+      headers: {
+        "Content-type": "application/json",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data);
+        setMessage("Commande annulé.");
+        toggleActiveOne();
+        fetchData();
+      })
+      .catch((error) => {
+        console.error(
+          "Erreur de modification de statut de produit dans la commande :",
+          error
+        );
+        setMessage(
+          "Erreur de modification de statut de produit dans la commande."
+        );
+        toggleActiveOne();
+      });
+  }, [handle]);
 
   const toastMarkup1 = activeOne ? (
     <Toast content={message} onDismiss={toggleActiveOne} />
@@ -174,8 +207,6 @@ export default function OrderDetail() {
     }
   }
 
-
-
   async function processOrder(id, product, type) {
     if(type=="refund"){
       redirect.dispatch(Redirect.Action.ADMIN_PATH, "/orders/"+id+"/refund");
@@ -206,7 +237,6 @@ export default function OrderDetail() {
     }
   }
 
-  
   function downloadBlob(blob, name) {
     if (
       window.navigator && 
@@ -235,10 +265,8 @@ export default function OrderDetail() {
       window.URL.revokeObjectURL(data);
       link.remove();
     }, 100);
-}
+  }
   
-  
-
   return (
     <Frame>
       <Page
@@ -246,41 +274,34 @@ export default function OrderDetail() {
         backAction={{ content: "Commandes CSE", url: "/orders" }}
         title={`${order.name}`}
         subtitle={`le ${formatDateTime(order.created_at)}`}
-         compactTitle
-       actionGroups={[
+        compactTitle
+        actionGroups={[
           {
             title: "Autres actions",
             actions: [
               {
                 content: <Text color="warning">Imprimer la facture</Text>,
-                onAction : () =>
-                 { processOrderItem(
-                    handle,
-                    "bill"
-                  )
-                }
+                onAction: () => {
+                  processOrderItem(handle, "bill");
+                },
               },
               {
-                content: <Text color="success">Imprimer le bon de livraison</Text>,
-                onAction : () =>
-                { processOrderItem(
-                   handle,
-                   "bl"
-                 )
-               }
+                content: (
+                  <Text color="success">Imprimer le bon de livraison</Text>
+                ),
+                onAction: () => {
+                  processOrderItem(handle, "bl");
+                },
               },
               {
                 content: <Text color="warning">Rembourser</Text>,
-                onAction : () =>
-                { processOrderItem(
-                   handle,
-                   "refund"
-                 )
-               }
+                onAction: () => {
+                  processOrderItem(handle, "refund");
+                },
               },
             ],
           },
-        ]} 
+        ]}
       >
         <div>
           <Modal open={isLoading} loading small></Modal>
@@ -311,15 +332,40 @@ export default function OrderDetail() {
         </div>
         <Grid>
           <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}>
-            <LegacyCard title={``} actions={[]}>
+            <LegacyCard
+              title={``}
+              actions={[
+                {
+                  content:
+                    order.cancelled_at == null ? (
+                      <button
+                        class="Polaris-Button Polaris-Button--sizeSlim"
+                        type="button"
+                        style={{
+                          backgroundColor: "#4d854b",
+                          color: "white",
+                        }}
+                        onClick={handleCancelOrder}
+                      >
+                        <span class="Polaris-Button__Content">
+                          <span class="Polaris-Button__Text">
+                            Annuler la commande
+                          </span>
+                        </span>
+                      </button>
+                    ) : (
+                      ""
+                    ),
+                },
+              ]}
+            >
               <LegacyCard.Section>
                 <HorizontalGrid gap="3">
                   <Text as="p" fontWeight="semibold">
                     Status de la commande {"  "}
                     <Badge progress="complete" status="paid">
                       {order.financial_status == "paid" ? "Payé" : "Payé"}
-                    </Badge>
-                    {"  "}
+                    </Badge>{" "}
                     {order.fulfillment_status == null ? (
                       <Badge progress="incomplete" status="attention">
                         En cours
@@ -327,6 +373,13 @@ export default function OrderDetail() {
                     ) : order.fulfillment_status == "fulfilled" ? (
                       <Badge progress="authorized" status="success">
                         Traité
+                      </Badge>
+                    ) : (
+                      ""
+                    )}{" "}
+                    {order.cancelled_at != null ? (
+                      <Badge progress="complete" status="paid">
+                        Annulé
                       </Badge>
                     ) : (
                       ""
@@ -408,248 +461,234 @@ export default function OrderDetail() {
                         </div>
                         <br />
                         {order.metafields.length >= 1 ? (
-                        getMetafieldStatus(
-                          product_id,
-                          order.metafields[0]?.value
-                        ) == "PAYE" ? (
-                          <button
-                            class="Polaris-Button Polaris-Button--sizeSlim"
-                            type="button"
-                            style={{
-                              backgroundColor: "#17a2b8",
-                              color: "white",
-                            }}
-                            onClick={() =>
-                              handleChangeStatus(
-                                handle,
-                                product_id,
-                                "EN PREPARATION"
-                              )
-                            }
-                          >
-                            <span class="Polaris-Button__Content">
-                              <span class="Polaris-Button__Icon">
-                                <span class="Polaris-Icon">
-                                  <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                  <svg
-                                    viewBox="0 0 20 20"
-                                    class="Polaris-Icon__Svg"
-                                    focusable="false"
-                                    aria-hidden="true"
-                                  >
-                                    <path
-                                      fill-rule="evenodd"
-                                      d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                    ></path>
-                                  </svg>
-                                </span>
-                              </span>
-                              <span class="Polaris-Button__Text">
-                                Marquer en préparation
-                              </span>
-                            </span>
-                          </button>
-                        ) : getMetafieldStatus(
+                          getMetafieldStatus(
                             product_id,
                             order.metafields[0]?.value
-                          ) == "EN PREPARATION" ? (
-                          <button
-                            class="Polaris-Button Polaris-Button--sizeSlim"
-                            type="button"
-                            style={{
-                              backgroundColor: "#17a2b8",
-                              color: "white",
-                            }}
-                            onClick={() =>
-                              handleChangeStatus(
-                                handle,
-                                product_id,
-                                "LIVRE CREUCH STORE"
-                              )
-                            }
-                          >
-                            <span class="Polaris-Button__Content">
-                              <span class="Polaris-Button__Icon">
-                                <span class="Polaris-Icon">
-                                  <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                  <svg
-                                    viewBox="0 0 20 20"
-                                    class="Polaris-Icon__Svg"
-                                    focusable="false"
-                                    aria-hidden="true"
-                                  >
-                                    <path
-                                      fill-rule="evenodd"
-                                      d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                    ></path>
-                                  </svg>
+                          ) == "PAYE" ? (
+                            <button
+                              class="Polaris-Button Polaris-Button--sizeSlim"
+                              type="button"
+                              style={{
+                                backgroundColor: "#17a2b8",
+                                color: "white",
+                              }}
+                              onClick={() =>
+                                handleChangeStatus(
+                                  handle,
+                                  product_id,
+                                  "EN PREPARATION"
+                                )
+                              }
+                            >
+                              <span class="Polaris-Button__Content">
+                                <span class="Polaris-Button__Icon">
+                                  <span class="Polaris-Icon">
+                                    <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                                    <svg
+                                      viewBox="0 0 20 20"
+                                      class="Polaris-Icon__Svg"
+                                      focusable="false"
+                                      aria-hidden="true"
+                                    >
+                                      <path
+                                        fill-rule="evenodd"
+                                        d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
+                                      ></path>
+                                    </svg>
+                                  </span>
+                                </span>
+                                <span class="Polaris-Button__Text">
+                                  Marquer en préparation
                                 </span>
                               </span>
-                              <span class="Polaris-Button__Text">
-                                Livré au creuch store
-                              </span>
-                            </span>
-                          </button>
-                        ) : getMetafieldStatus(
-                            product_id,
-                            order.metafields[0]?.value
-                          ) == "LIVRE CREUCH STORE" ? (
-                          <button
-                            class="Polaris-Button Polaris-Button--sizeSlim"
-                            type="button"
-                            style={{
-                              backgroundColor: "#28a745",
-                              color: "white",
-                            }}
-                            onClick={() =>
-                              handleChangeStatus(
-                                handle,
-                                product_id,
-                                "LIVRE CLIENT"
-                              )
-                            }
-                          >
-                            <span class="Polaris-Button__Content">
-                              <span class="Polaris-Button__Icon">
-                                <span class="Polaris-Icon">
-                                  <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                  <svg
-                                    viewBox="0 0 20 20"
-                                    class="Polaris-Icon__Svg"
-                                    focusable="false"
-                                    aria-hidden="true"
-                                  >
-                                    <path
-                                      fill-rule="evenodd"
-                                      d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                    ></path>
-                                  </svg>
+                            </button>
+                          ) : getMetafieldStatus(
+                              product_id,
+                              order.metafields[0]?.value
+                            ) == "EN PREPARATION" ? (
+                            <button
+                              class="Polaris-Button Polaris-Button--sizeSlim"
+                              type="button"
+                              style={{
+                                backgroundColor: "#17a2b8",
+                                color: "white",
+                              }}
+                              onClick={() =>
+                                handleChangeStatus(
+                                  handle,
+                                  product_id,
+                                  "LIVRE CREUCH STORE"
+                                )
+                              }
+                            >
+                              <span class="Polaris-Button__Content">
+                                <span class="Polaris-Button__Icon">
+                                  <span class="Polaris-Icon">
+                                    <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                                    <svg
+                                      viewBox="0 0 20 20"
+                                      class="Polaris-Icon__Svg"
+                                      focusable="false"
+                                      aria-hidden="true"
+                                    >
+                                      <path
+                                        fill-rule="evenodd"
+                                        d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
+                                      ></path>
+                                    </svg>
+                                  </span>
+                                </span>
+                                <span class="Polaris-Button__Text">
+                                  Livré au creuch store
                                 </span>
                               </span>
-                              <span class="Polaris-Button__Text">
-                                Livré au client
+                            </button>
+                          ) : getMetafieldStatus(
+                              product_id,
+                              order.metafields[0]?.value
+                            ) == "LIVRE CREUCH STORE" ? (
+                            <button
+                              class="Polaris-Button Polaris-Button--sizeSlim"
+                              type="button"
+                              style={{
+                                backgroundColor: "#28a745",
+                                color: "white",
+                              }}
+                              onClick={() =>
+                                handleChangeStatus(
+                                  handle,
+                                  product_id,
+                                  "LIVRE CLIENT"
+                                )
+                              }
+                            >
+                              <span class="Polaris-Button__Content">
+                                <span class="Polaris-Button__Icon">
+                                  <span class="Polaris-Icon">
+                                    <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                                    <svg
+                                      viewBox="0 0 20 20"
+                                      class="Polaris-Icon__Svg"
+                                      focusable="false"
+                                      aria-hidden="true"
+                                    >
+                                      <path
+                                        fill-rule="evenodd"
+                                        d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
+                                      ></path>
+                                    </svg>
+                                  </span>
+                                </span>
+                                <span class="Polaris-Button__Text">
+                                  Livré au client
+                                </span>
                               </span>
-                            </span>
-                          </button>
+                            </button>
+                          ) : (
+                            "Livré au client"
+                          )
                         ) : (
-                          "Livré au client"
-                       )
-                      ) : (
-                        ""
-                      )}
+                          ""
+                        )}
 
-                          <button
-                            class="Polaris-Button Polaris-Button--sizeSlim"
-                            type="button"
-                            style={{
-                              backgroundColor: "#17D438",
-                              color: "white",
-                            }}
-                            onClick={() =>
-                              processOrder(
-                                handle,
-                                product_id,
-                                "bl"
-                              )
-                            }
-                          >
-                            <span class="Polaris-Button__Content">
-                              <span class="Polaris-Button__Icon">
-                                <span class="Polaris-Icon">
-                                  <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                  <svg
-                                    viewBox="0 0 20 20"
-                                    class="Polaris-Icon__Svg"
-                                    focusable="false"
-                                    aria-hidden="true"
-                                  >
-                                    <path
-                                      fill-rule="evenodd"
-                                      d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                    ></path>
-                                  </svg>
-                                </span>
-                              </span>
-                              <span class="Polaris-Button__Text">
-                                Imprimer le bon de livraison
+                        <button
+                          class="Polaris-Button Polaris-Button--sizeSlim"
+                          type="button"
+                          style={{
+                            backgroundColor: "#17D438",
+                            color: "white",
+                          }}
+                          onClick={() => processOrder(handle, product_id, "bl")}
+                        >
+                          <span class="Polaris-Button__Content">
+                            <span class="Polaris-Button__Icon">
+                              <span class="Polaris-Icon">
+                                <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                                <svg
+                                  viewBox="0 0 20 20"
+                                  class="Polaris-Icon__Svg"
+                                  focusable="false"
+                                  aria-hidden="true"
+                                >
+                                  <path
+                                    fill-rule="evenodd"
+                                    d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
+                                  ></path>
+                                </svg>
                               </span>
                             </span>
-                          </button>
+                            <span class="Polaris-Button__Text">
+                              Imprimer le bon de livraison
+                            </span>
+                          </span>
+                        </button>
 
-                          <button
-                            class="Polaris-Button Polaris-Button--sizeSlim"
-                            type="button"
-                            style={{
-                              backgroundColor: "#226666",
-                              color: "white",
-                            }}
-                            onClick={() =>
-                              processOrder(
-                                handle,
-                                product_id,
-                                "bill"
-                              )
-                            }
-                          >
-                            <span class="Polaris-Button__Content">
-                              <span class="Polaris-Button__Icon">
-                                <span class="Polaris-Icon">
-                                  <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                  <svg
-                                    viewBox="0 0 20 20"
-                                    class="Polaris-Icon__Svg"
-                                    focusable="false"
-                                    aria-hidden="true"
-                                  >
-                                    <path
-                                      fill-rule="evenodd"
-                                      d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                    ></path>
-                                  </svg>
-                                </span>
-                              </span>
-                              <span class="Polaris-Button__Text">
-                                Imprimer la facture
+                        <button
+                          class="Polaris-Button Polaris-Button--sizeSlim"
+                          type="button"
+                          style={{
+                            backgroundColor: "#226666",
+                            color: "white",
+                          }}
+                          onClick={() =>
+                            processOrder(handle, product_id, "bill")
+                          }
+                        >
+                          <span class="Polaris-Button__Content">
+                            <span class="Polaris-Button__Icon">
+                              <span class="Polaris-Icon">
+                                <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                                <svg
+                                  viewBox="0 0 20 20"
+                                  class="Polaris-Icon__Svg"
+                                  focusable="false"
+                                  aria-hidden="true"
+                                >
+                                  <path
+                                    fill-rule="evenodd"
+                                    d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
+                                  ></path>
+                                </svg>
                               </span>
                             </span>
-                          </button>
-                           <button
-                            class="Polaris-Button Polaris-Button--sizeSlim"
-                            type="button"
-                            style={{
-                              backgroundColor: "#AA3939",
-                              color: "white",
-                            }}
-                            onClick={() =>
-                              processOrder(
-                                handle,
-                                product_id,
-                                "refund"
-                              )
-                            }
-                          >
-                            <span class="Polaris-Button__Content">
-                              <span class="Polaris-Button__Icon">
-                                <span class="Polaris-Icon">
-                                  <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                  <svg
-                                    viewBox="0 0 20 20"
-                                    class="Polaris-Icon__Svg"
-                                    focusable="false"
-                                    aria-hidden="true"
-                                  >
-                                    <path
-                                      fill-rule="evenodd"
-                                      d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                    ></path>
-                                  </svg>
-                                </span>
-                              </span>
-                              <span class="Polaris-Button__Text">
-                                Rembourser le client
+                            <span class="Polaris-Button__Text">
+                              Imprimer la facture
+                            </span>
+                          </span>
+                        </button>
+                        <button
+                          class="Polaris-Button Polaris-Button--sizeSlim"
+                          type="button"
+                          style={{
+                            backgroundColor: "#AA3939",
+                            color: "white",
+                          }}
+                          onClick={() =>
+                            processOrder(handle, product_id, "refund")
+                          }
+                        >
+                          <span class="Polaris-Button__Content">
+                            <span class="Polaris-Button__Icon">
+                              <span class="Polaris-Icon">
+                                <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                                <svg
+                                  viewBox="0 0 20 20"
+                                  class="Polaris-Icon__Svg"
+                                  focusable="false"
+                                  aria-hidden="true"
+                                >
+                                  <path
+                                    fill-rule="evenodd"
+                                    d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
+                                  ></path>
+                                </svg>
                               </span>
                             </span>
-                          </button> 
+                            <span class="Polaris-Button__Text">
+                              Rembourser le client
+                            </span>
+                          </span>
+                        </button>
                       </ResourceList.Item>
                     );
                   }}
@@ -662,25 +701,28 @@ export default function OrderDetail() {
                     Nombre d'articles : {order.line_items.length}
                   </Text>
                   <Text as="p">
-                    Code de Réduction :{" "}
-                    {order.discount_codes.length
-                      ? order.discount_codes[0].code
-                      : ""}
-                  </Text>
-                  <Text as="p">
-                    Réduction Prix :{" "}
-                    {order.discount_codes.length
-                      ? order.discount_codes[0].amount
-                      : ""}{" "}
-                    €
-                  </Text>
-                  <Text as="p">
                     Point de retrait :{" "}
                     {order.shipping_lines.length >= 1
                       ? order.shipping_lines[0].title
                       : ""}
                   </Text>
                   <Text as="p">Total : {order.total_price} €</Text>
+                  <Text as="p" fontWeight="semibold">
+                    Moyen de paiement
+                  </Text>
+                  <List type="bullet">
+                    {order.payment_gateway_names.map(
+                      (payment_gateway_name, index) => (
+                        <List.Item key={index}>
+                          {payment_gateway_name === "gift_card"
+                            ? "Abondement"
+                            : payment_gateway_name === "manual"
+                            ? "Manuel"
+                            : payment_gateway_name}
+                        </List.Item>
+                      )
+                    )}
+                  </List>
                 </HorizontalGrid>
               </LegacyCard.Section>
             </LegacyCard>

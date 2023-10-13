@@ -264,6 +264,32 @@ export default function OffreDetail() {
     });
   }, [selectedSubCollectionsAll, handle]);
 
+  const handleRemoveSubCollection = useCallback(async (value) => {
+    setIsLoading(true);
+    await fetch(
+      `https://staging.api.creuch.fr/api/remove_sub_collection_to_collection`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          sub_collection_id: value,
+        }),
+        headers: {
+          "Content-type": "application/json",
+        },
+      }
+    )
+      .then((response) => response.json())
+      .then(() => {
+        fetchData();
+        setMessage("Sous collection retiré du collection avec succès");
+        toggleActiveOne();
+      })
+      .catch((error) => {
+        setMessage("Erreur d'ajout de sous collection à la collection.");
+        toggleActiveOne();
+      });
+  }, []);
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -506,7 +532,7 @@ export default function OffreDetail() {
   const filterControl = (
     <LegacyFilters
       queryValue={queryValue}
-      queryPlaceholder="Recherchez produit ..."
+      queryPlaceholder="Recherchez dans les produits ..."
       filters={[]}
       appliedFilters={[]}
       onQueryChange={handleQueryValueChange}
@@ -522,7 +548,7 @@ export default function OffreDetail() {
   const filterControlSub = (
     <LegacyFilters
       queryValue={queryValueSub}
-      queryPlaceholder="Recherchez sous catégorie ..."
+      queryPlaceholder="Recherchez dans les sous catégories ..."
       filters={[]}
       appliedFilters={[]}
       onQueryChange={handleQueryValueSubChange}
@@ -950,6 +976,7 @@ export default function OffreDetail() {
                         },
                         {
                           content: <Text color="critical">Retirer</Text>,
+                          onAction: () => handleRemoveSubCollection(id.match(/\/(\d+)$/)[1]),
                         },
                       ]}
                       persistActions
