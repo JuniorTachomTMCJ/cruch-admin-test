@@ -28,13 +28,6 @@ import {Redirect} from '@shopify/app-bridge/actions';
 export default function HomePage() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
-  const user = localStorage.getItem("user");
-  if (!user) {
-    redirect.dispatch(Redirect.Action.APP, "/");
-    return null;
-  }
-  const user_data = JSON.parse(user);
-  const user_cse = user_data.code_cse?.value;
   
   const [active, setActive] = useState(false);
   const [actives, setActives] = useState(false);
@@ -165,8 +158,6 @@ export default function HomePage() {
       onAction: () => console.log("Todo: implement bulk delete"),
     },
   ];
-  
-  const count = customers.length;
 
   return (
     <Page

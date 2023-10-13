@@ -35,9 +35,6 @@ import { useAuthenticatedFetch } from "../../hooks";
 
 export default function OffreDetail() {
   const redirect = Redirect.create(useAppBridge());
-  const user = localStorage.getItem("user");
-
-  //const user_data = JSON.parse(user);
   const user_cse = "INAN0023";
 
   const fetchQuery = useAuthenticatedFetch();

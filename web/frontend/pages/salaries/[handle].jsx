@@ -37,7 +37,6 @@ export default function ClientDetail() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
   
-
   const { handle } = useParams();
   const [client, setClient] = useState({});
   const [metafields, setMetafields] = useState([]);

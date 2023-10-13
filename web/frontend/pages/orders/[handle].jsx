@@ -41,9 +41,6 @@ export default function OrderDetail() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
 
-  
-  
-
   const { handle } = useParams();
   const [order, setOrder] = useState({
     shipping_lines: [],
