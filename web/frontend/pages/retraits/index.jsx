@@ -447,7 +447,7 @@ export default function HomePage() {
   return (
     <Page
       fullWidth
-      backAction={{ content: "Tableau de bord", url: "/dashboard" }}
+      backAction={{ content: "Tableau de bord", url: "/" }}
       title="Points de retrait/TOTEMS"
       titleMetadata={
         <Badge status="success">{retraits.length} Points de retrait</Badge>

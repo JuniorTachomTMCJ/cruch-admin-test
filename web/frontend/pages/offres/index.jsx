@@ -510,7 +510,7 @@ export default function OffresPage() {
     <Frame>
       <Page
         fullWidth
-        backAction={{ content: "Tableau de bord", url: "/dashboard" }}
+        backAction={{ content: "Tableau de bord", url: "/" }}
         title="Offres CSE"
         titleMetadata={<Badge status="success">{offres.length} Offres</Badge>}
         subtitle="Gérez les collections de votre CSE"
