@@ -149,6 +149,10 @@ export default function OrderDetail() {
   }
 
   async function processOrderItem(id, type){
+   if(type=="refund"){
+      redirect.dispatch(Redirect.Action.ADMIN_PATH, "/orders/"+id+"/refund");
+    }
+    else{
       setIsLoading(true);
       await fetch(`https://staging.api.creuch.fr/api/order_process`, {
       method: "POST",
@@ -170,6 +174,7 @@ export default function OrderDetail() {
       .catch((error) =>
         console.error("Erreur de chargement des détails de la commande :", error)
       );
+    }
   }
 
 
@@ -264,6 +269,15 @@ export default function OrderDetail() {
                 { processOrderItem(
                    handle,
                    "bl"
+                 )
+               }
+              },
+              {
+                content: <Text color="warning">Rembourser</Text>,
+                onAction : () =>
+                { processOrderItem(
+                   handle,
+                   "refund"
                  )
                }
               },
