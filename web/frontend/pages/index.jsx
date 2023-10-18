@@ -43,14 +43,12 @@ import {
   ExportMinor,
 } from "@shopify/polaris-icons";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import { Redirect } from "@shopify/app-bridge/actions";
 import "@shopify/polaris-viz/build/esm/styles.css";
 import { utils, writeFileXLSX } from "xlsx";
 export { utils, writeFileXLSX };
 
 export default function LoginPage() {
   const app = useAppBridge();
-  const redirect = Redirect.create(app);
 
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -400,6 +398,9 @@ export default function LoginPage() {
           collections.forEach((collection) => {
             orders.forEach((order) => {
               const orderDate = new Date(order.created_at);
+              const metafield = order.metafields.find(
+                (metafield) => metafield.key === "deleted"
+              );
               order.line_items.forEach((product) => {
                 let productsIds = collection.products.map(
                   (produit) => produit.id.match(/\/(\d+)$/)[1]
@@ -408,8 +409,9 @@ export default function LoginPage() {
                   productsIds.includes(String(product.product_id)) &&
                   orderDate >= startDate &&
                   orderDate < endDate &&
-                  order.client.entreprise.code_cse.value ==
-                    entreprise.code_cse.value
+                  order.client.entreprise?.code_cse.value ==
+                    entreprise.code_cse.value &&
+                  metafield.value == false
                 ) {
                   const formattedDate = orderDate.toISOString().slice(0, 10);
                   if (!datas[formattedDate]) {
@@ -429,6 +431,9 @@ export default function LoginPage() {
             if (collection) {
               orders.forEach((order) => {
                 const orderDate = new Date(order.created_at);
+                const metafield = order.metafields.find(
+                  (metafield) => metafield.key === "deleted"
+                );
                 order.line_items.forEach((product) => {
                   let productsIds = collection.products.map(
                     (produit) => produit.id.match(/\/(\d+)$/)[1]
@@ -437,8 +442,9 @@ export default function LoginPage() {
                     productsIds.includes(String(product.product_id)) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise.code_cse.value ==
-                      entreprise.code_cse.value
+                    order.client.entreprise?.code_cse.value ==
+                      entreprise.code_cse.value &&
+                    metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
                     if (!datas[formattedDate]) {
@@ -453,14 +459,17 @@ export default function LoginPage() {
               const productId = collectionId;
               orders.forEach((order) => {
                 const orderDate = new Date(order.created_at);
+                const metafield = order.metafields.find(
+                  (metafield) => metafield.key === "deleted"
+                );
                 order.line_items.forEach((product) => {
                   if (
-                    String(productId.match(/\/(\d+)$/)[1]) ==
-                      String(product.product_id) &&
+                    String(productId.match(/\/(\d+)$/)[1]) == String(product.product_id) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise.code_cse.value ==
-                      entreprise.code_cse.value
+                    order.client.entreprise?.code_cse.value ==
+                      entreprise.code_cse.value &&
+                    metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
                     if (!datas[formattedDate]) {
@@ -485,6 +494,9 @@ export default function LoginPage() {
           collections.forEach((collection) => {
             orders.forEach((order) => {
               const orderDate = new Date(order.created_at);
+              const metafield = order.metafields.find(
+                (metafield) => metafield.key === "deleted"
+              );
               order.line_items.forEach((product) => {
                 let productsIds = collection.products.map(
                   (produit) => produit.id.match(/\/(\d+)$/)[1]
@@ -493,8 +505,9 @@ export default function LoginPage() {
                   productsIds.includes(String(product.product_id)) &&
                   orderDate >= startDate &&
                   orderDate < endDate &&
-                  order.client.entreprise.code_cse.value ==
-                    entreprise.code_cse.value
+                  order.client.entreprise?.code_cse.value ==
+                    entreprise.code_cse.value &&
+                  metafield.value == false
                 ) {
                   const formattedDate = orderDate.toISOString().slice(0, 10);
                   if (!datas[formattedDate]) {
@@ -514,6 +527,9 @@ export default function LoginPage() {
             if (collection) {
               orders.forEach((order) => {
                 const orderDate = new Date(order.created_at);
+                const metafield = order.metafields.find(
+                  (metafield) => metafield.key === "deleted"
+                );
                 order.line_items.forEach((product) => {
                   let productsIds = collection.products.map(
                     (produit) => produit.id.match(/\/(\d+)$/)[1]
@@ -522,8 +538,9 @@ export default function LoginPage() {
                     productsIds.includes(String(product.product_id)) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise.code_cse.value ==
-                      entreprise.code_cse.value
+                    order.client.entreprise?.code_cse.value ==
+                      entreprise.code_cse.value &&
+                    metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
                     if (!datas[formattedDate]) {
@@ -538,14 +555,18 @@ export default function LoginPage() {
               const productId = collectionId;
               orders.forEach((order) => {
                 const orderDate = new Date(order.created_at);
+                const metafield = order.metafields.find(
+                  (metafield) => metafield.key === "deleted"
+                );
                 order.line_items.forEach((product) => {
                   if (
                     String(productId.match(/\/(\d+)$/)[1]) ==
                       String(product.product_id) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise.code_cse.value ==
-                      entreprise.code_cse.value
+                    order.client.entreprise?.code_cse.value ==
+                      entreprise.code_cse.value &&
+                    metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
                     if (!datas[formattedDate]) {
@@ -570,18 +591,19 @@ export default function LoginPage() {
       entreprises.forEach((entreprise) => {
         orders.forEach((order) => {
           const orderDate = new Date(order.created_at);
+          const metafield = order.metafields.find(
+            (metafield) => metafield.key === "deleted"
+          );
           if (
             order.financial_status === "paid" &&
             orderDate >= startDate &&
             orderDate < endDate &&
-            order.client.entreprise.code_cse.value == entreprise.code_cse.value
+            order.client.entreprise?.code_cse.value == entreprise.code_cse.value &&
+            metafield.value == false
           ) {
             total_orders_count++;
             order.transactions.forEach((transaction) => {
-              if (
-                transaction.gateway == "gift_card" &&
-                transaction.status == "success"
-              ) {
+              if (transaction.gateway == "gift_card" && transaction.status == "success") {
                 total_reductions += parseFloat(transaction.amount);
               }
             });
@@ -605,11 +627,15 @@ export default function LoginPage() {
 
         orders.forEach((order) => {
           const orderDate = new Date(order.created_at);
+          const metafield = order.metafields.find(
+            (metafield) => metafield.key === "deleted"
+          );
           if (
             order.financial_status === "paid" &&
             orderDate >= startDate &&
             orderDate < endDate &&
-            order.client.entreprise.code_cse.value == entreprise.code_cse.value
+            order.client.entreprise?.code_cse.value == entreprise.code_cse.value &&
+            metafield.value == false
           ) {
             total_orders_count++;
             order.transactions.forEach((transaction) => {
@@ -636,7 +662,11 @@ export default function LoginPage() {
 
     reductions.forEach((reduction) => {
       const reductionDate = new Date(reduction.created_at);
-      if (reductionDate >= startDate && reductionDate < endDate) {
+      if (
+        reductionDate >= startDate &&
+        reductionDate < endDate &&
+        reduction.disabled_at == null
+      ) {
         total_reductions_price += parseFloat(reduction.initial_value);
         total_reductions_use_price += parseFloat(
           reduction.initial_value - reduction.balance
@@ -746,9 +776,9 @@ export default function LoginPage() {
       (collection) => collection.id === parentId
     );
 
-    if (
-      parentCollection.sub_collections.length === 0 &&
-      parentCollection.products.length === 0
+    if (parentCollection == undefined ||
+      (parentCollection.sub_collections.length === 0 &&
+      parentCollection.products.length === 0)
     ) {
       return null;
     }

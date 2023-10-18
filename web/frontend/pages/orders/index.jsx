@@ -190,7 +190,7 @@ export default function OrdersPage() {
     switch (status) {
       case "fulfilled":
         return (
-          <Badge progress="complete" status="fulfilled">
+          <Badge progress="complete" status="success">
             Traitée
           </Badge>
         );
@@ -221,58 +221,76 @@ export default function OrdersPage() {
     }
   }
 
-  const rowMarkup = filteredOrders.map((order, index) => (
-    <IndexTable.Row
-      id={order.id}
-      key={order.id}
-      selected={selectedResources.includes(order.id)}
-      position={index}
-      subdued={
-        order.fulfillment_status === null
-          ? false
-          : order.fulfillment_status === "fulfilled"
-          ? true
-          : false
+  const rowMarkup = filteredOrders.map((order, index) => {
+    let totalGiftCardAmount = 0;
+
+    order.transactions.forEach((transaction) => {
+      if (
+        transaction.gateway === "gift_card" &&
+        transaction.status === "success"
+      ) {
+        totalGiftCardAmount += parseFloat(transaction.amount);
       }
-      status={
-        order.fulfillment_status === null
-          ? ""
-          : order.fulfillment_status === "fulfilled"
-          ? "subdued"
-          : ""
-      }
-    >
-      <IndexTable.Cell>
-        <Link
-          dataPrimaryLink
-          url={`/orders/${order.id}`}
-          monochrome
-          removeUnderline
-        >
-          <Text variant="bodyMd" fontWeight="bold" as="span">
-            {order.name}
-          </Text>
-        </Link>
-      </IndexTable.Cell>
-      <IndexTable.Cell>{formatDateTime(order.created_at)}</IndexTable.Cell>
-      <IndexTable.Cell>
-        {`${order.customer.first_name} ${order.customer.last_name}`}
-      </IndexTable.Cell>
-      <IndexTable.Cell>{`${order.total_discounts} €`}</IndexTable.Cell>
-      <IndexTable.Cell>{`${order.total_price} €`}</IndexTable.Cell>
-      <IndexTable.Cell>
-        {financialStatusBadge(order.financial_status)}
-      </IndexTable.Cell>
-      <IndexTable.Cell>
-        {fulfillmentStatusBadge(order.fulfillment_status)}
-      </IndexTable.Cell>
-    </IndexTable.Row>
-  ));
+    });
+
+    return (
+      <IndexTable.Row
+        id={order.id}
+        key={order.id}
+        selected={selectedResources.includes(order.id)}
+        position={index}
+        subdued={
+          order.fulfillment_status === null
+            ? false
+            : order.fulfillment_status === "fulfilled"
+            ? true
+            : false
+        }
+        status={
+          order.fulfillment_status === null
+            ? ""
+            : order.fulfillment_status === "fulfilled"
+            ? "subdued"
+            : ""
+        }
+      >
+        <IndexTable.Cell>
+          <Link
+            dataPrimaryLink
+            url={`/orders/${order.id}`}
+            monochrome
+            removeUnderline
+          >
+            <Text variant="bodyMd" fontWeight="bold" as="span">
+              {order.name}
+            </Text>
+          </Link>
+        </IndexTable.Cell>
+        <IndexTable.Cell>{formatDateTime(order.created_at)}</IndexTable.Cell>
+        <IndexTable.Cell>
+          {`${order.customer.first_name} ${order.customer.last_name}`}
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+          {`${totalGiftCardAmount} €`}
+        </IndexTable.Cell>
+        <IndexTable.Cell>{`${order.total_price} €`}</IndexTable.Cell>
+        <IndexTable.Cell>
+          {financialStatusBadge(order.financial_status)}
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+          {fulfillmentStatusBadge(order.fulfillment_status)} {" "}
+          {order.cancelled_at ? (<Badge progress="complete" status="fulfilled">Annulée</Badge>) : ""} {" "}
+          {order.metafields[1]?.value ? (<Badge progress="complete" status="critical">Supprimée</Badge>) : ""}
+        </IndexTable.Cell>
+      </IndexTable.Row>
+    );
+  });
 
   const exportToExcel = async () => {
     const tableau = filteredOrders.map((order, index) => {
       const status = order.financial_status;
       const status_order = order.fulfillment_status;
+      const isCancelled = order.cancelled_at !== null;
       return {
         Commande: order.name,
         Date: formatDateTime(order.created_at),
@@ -292,7 +310,7 @@ export default function OrdersPage() {
             ? "En attente"
             : "État inconnu",
         "Statut des commandes":
-          status_order === "fulfilled"
+          (status_order === "fulfilled"
             ? "Traitée"
             : status_order === null
             ? "En cours"
@@ -300,7 +318,7 @@ export default function OrdersPage() {
             ? "Traitement partielle"
             : status_order === "restocked"
             ? "Restockage"
-            : "État inconnu",
+            : "État inconnu") + (isCancelled ? ", Annulée" : ""),
       };
     });
     const wb = utils.book_new();
@@ -543,7 +561,7 @@ export default function OrdersPage() {
         if (value.length === 0) {
           return true;
         }
-        return value.includes(String(order.fulfillment_status));
+        return value == "cancel" ? order.cancelled_at != null : value.includes(String(order.fulfillment_status));
       });
       let orders_temp = [];
       updatedFilteredOrders.forEach((order) => {
@@ -769,6 +787,7 @@ export default function OrdersPage() {
           choices={[
             { label: "Traitée", value: "fulfilled" },
             { label: "En cours", value: "null" },
+            { label: "Annulé", value: "cancel" },
             // { label: "Traitement partielle", value: "partial" },
             // { label: "Restockage", value: "restocked" },
           ]}
@@ -849,6 +868,8 @@ export default function OrdersPage() {
                 return "Traitement partielle";
               case "restocked":
                 return "Restockage";
+              case "cancel":
+                return "Annulé";
               default:
                 return "État inconnu";
             }

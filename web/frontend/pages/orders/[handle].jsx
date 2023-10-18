@@ -29,9 +29,8 @@ import {
   List,
 } from "@shopify/polaris";
 import {
-  EditMajor,
   ImageMajor,
-  ChecklistAlternateMajor,
+  MarkPaidMinor,
 } from "@shopify/polaris-icons";
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
@@ -46,8 +45,11 @@ export default function OrderDetail() {
   const [order, setOrder] = useState({
     shipping_lines: [],
     line_items: [],
-    discount_codes: [],
     payment_gateway_names: [],
+    billing_address: {},
+    shipping_address: {},
+    customer: {},
+    metafields: []
   });
   const [isLoading, setIsLoading] = useState(false);
   const [activeOne, setActiveOne] = useState(false);
@@ -72,7 +74,6 @@ export default function OrderDetail() {
     })
       .then((response) => response.json())
       .then((data) => {
-        console.log(data);
         setMessage("Statut de livraison de produit mise a jour avec succès.");
         toggleActiveOne();
         fetchData();
@@ -102,8 +103,36 @@ export default function OrderDetail() {
     })
       .then((response) => response.json())
       .then((data) => {
-        console.log(data);
         setMessage("Commande annulé.");
+        toggleActiveOne();
+        fetchData();
+      })
+      .catch((error) => {
+        console.error(
+          "Erreur de modification de statut de produit dans la commande :",
+          error
+        );
+        setMessage(
+          "Erreur de modification de statut de produit dans la commande."
+        );
+        toggleActiveOne();
+      });
+  }, [handle]);
+
+  const handleDeleteOrder = useCallback(async () => {
+    setIsLoading(true);
+    await fetch(`https://staging.api.creuch.fr/api/delete_order`, {
+      method: "POST",
+      body: JSON.stringify({
+        id: handle,
+      }),
+      headers: {
+        "Content-type": "application/json",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        setMessage("Commande supprimée.");
         toggleActiveOne();
         fetchData();
       })
@@ -152,13 +181,13 @@ export default function OrderDetail() {
       .then((response) => response.json())
       .then((data) => {
         const order = data.order;
+        console.log(order);
         if (order.errors) {
           redirect.dispatch(Redirect.Action.APP, "/orders");
         } else {
           setOrder(order);
           setIsLoading(false);
         }
-        console.log(order);
       })
       .catch((error) =>
         console.error("Erreur de chargement des détails de la commande :", error)
@@ -331,24 +360,56 @@ export default function OrderDetail() {
           </Modal>
         </div>
         <Grid>
-          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}>
+          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 4, lg: 8, xl: 8 }}>
             <LegacyCard
-              title={``}
+              title={
+                <Text as="p" fontWeight="semibold">
+                  Status de la commande {"  "}
+                  <Badge progress="complete" status="paid">
+                    {order.financial_status == "paid" ? "Payé" : "Payé"}
+                  </Badge>{" "}
+                  {order.fulfillment_status == null ? (
+                    <Badge progress="incomplete" status="attention">
+                      En cours
+                    </Badge>
+                  ) : order.fulfillment_status == "fulfilled" ? (
+                    <Badge progress="complete" status="success">
+                      Traité
+                    </Badge>
+                  ) : (
+                    ""
+                  )}{" "}
+                  {order.cancelled_at != null ? (
+                    <Badge progress="complete" status="paid">
+                      Annulé
+                    </Badge>
+                  ) : (
+                    ""
+                  )}{" "}
+                  {order.metafields[1]?.value == true ? (
+                    <Badge progress="complete" status="critical">
+                      Supprimée
+                    </Badge>
+                  ) : (
+                    ""
+                  )}
+                </Text>
+              }
               actions={[
                 {
                   content:
                     order.cancelled_at == null ? (
                       <button
-                        class="Polaris-Button Polaris-Button--sizeSlim"
+                        className="Polaris-Button Polaris-Button--sizeSlim"
                         type="button"
                         style={{
-                          backgroundColor: "#4d854b",
+                          backgroundColor: "#303030",
                           color: "white",
                         }}
                         onClick={handleCancelOrder}
                       >
-                        <span class="Polaris-Button__Content">
-                          <span class="Polaris-Button__Text">
+                        <span className="Polaris-Button__Content">
+                          <span className="Polaris-Button__Text">
                             Annuler la commande
                           </span>
                         </span>
@@ -361,30 +422,6 @@ export default function OrderDetail() {
             >
               <LegacyCard.Section>
                 <HorizontalGrid gap="3">
-                  <Text as="p" fontWeight="semibold">
-                    Status de la commande {"  "}
-                    <Badge progress="complete" status="paid">
-                      {order.financial_status == "paid" ? "Payé" : "Payé"}
-                    </Badge>{" "}
-                    {order.fulfillment_status == null ? (
-                      <Badge progress="incomplete" status="attention">
-                        En cours
-                      </Badge>
-                    ) : order.fulfillment_status == "fulfilled" ? (
-                      <Badge progress="authorized" status="success">
-                        Traité
-                      </Badge>
-                    ) : (
-                      ""
-                    )}{" "}
-                    {order.cancelled_at != null ? (
-                      <Badge progress="complete" status="paid">
-                        Annulé
-                      </Badge>
-                    ) : (
-                      ""
-                    )}
-                  </Text>
                   <Text as="p" fontWeight="semibold">
                     Emplacement
                   </Text>
@@ -466,7 +503,7 @@ export default function OrderDetail() {
                             order.metafields[0]?.value
                           ) == "PAYE" ? (
                             <button
-                              class="Polaris-Button Polaris-Button--sizeSlim"
+                              className="Polaris-Button Polaris-Button--sizeSlim"
                               type="button"
                               style={{
                                 backgroundColor: "#17a2b8",
@@ -480,24 +517,24 @@ export default function OrderDetail() {
                                 )
                               }
                             >
-                              <span class="Polaris-Button__Content">
-                                <span class="Polaris-Button__Icon">
-                                  <span class="Polaris-Icon">
-                                    <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                              <span className="Polaris-Button__Content">
+                                <span className="Polaris-Button__Icon">
+                                  <span className="Polaris-Icon">
+                                    <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
                                     <svg
                                       viewBox="0 0 20 20"
-                                      class="Polaris-Icon__Svg"
+                                      className="Polaris-Icon__Svg"
                                       focusable="false"
                                       aria-hidden="true"
                                     >
                                       <path
-                                        fill-rule="evenodd"
+                                        fillRule="evenodd"
                                         d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
                                       ></path>
                                     </svg>
                                   </span>
                                 </span>
-                                <span class="Polaris-Button__Text">
+                                <span className="Polaris-Button__Text">
                                   Marquer en préparation
                                 </span>
                               </span>
@@ -507,7 +544,7 @@ export default function OrderDetail() {
                               order.metafields[0]?.value
                             ) == "EN PREPARATION" ? (
                             <button
-                              class="Polaris-Button Polaris-Button--sizeSlim"
+                              className="Polaris-Button Polaris-Button--sizeSlim"
                               type="button"
                               style={{
                                 backgroundColor: "#17a2b8",
@@ -521,24 +558,24 @@ export default function OrderDetail() {
                                 )
                               }
                             >
-                              <span class="Polaris-Button__Content">
-                                <span class="Polaris-Button__Icon">
-                                  <span class="Polaris-Icon">
-                                    <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                              <span className="Polaris-Button__Content">
+                                <span className="Polaris-Button__Icon">
+                                  <span className="Polaris-Icon">
+                                    <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
                                     <svg
                                       viewBox="0 0 20 20"
-                                      class="Polaris-Icon__Svg"
+                                      className="Polaris-Icon__Svg"
                                       focusable="false"
                                       aria-hidden="true"
                                     >
                                       <path
-                                        fill-rule="evenodd"
+                                        fillRule="evenodd"
                                         d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
                                       ></path>
                                     </svg>
                                   </span>
                                 </span>
-                                <span class="Polaris-Button__Text">
+                                <span className="Polaris-Button__Text">
                                   Livré au creuch store
                                 </span>
                               </span>
@@ -548,7 +585,7 @@ export default function OrderDetail() {
                               order.metafields[0]?.value
                             ) == "LIVRE CREUCH STORE" ? (
                             <button
-                              class="Polaris-Button Polaris-Button--sizeSlim"
+                              className="Polaris-Button Polaris-Button--sizeSlim"
                               type="button"
                               style={{
                                 backgroundColor: "#28a745",
@@ -562,24 +599,24 @@ export default function OrderDetail() {
                                 )
                               }
                             >
-                              <span class="Polaris-Button__Content">
-                                <span class="Polaris-Button__Icon">
-                                  <span class="Polaris-Icon">
-                                    <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                              <span className="Polaris-Button__Content">
+                                <span className="Polaris-Button__Icon">
+                                  <span className="Polaris-Icon">
+                                    <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
                                     <svg
                                       viewBox="0 0 20 20"
-                                      class="Polaris-Icon__Svg"
+                                      className="Polaris-Icon__Svg"
                                       focusable="false"
                                       aria-hidden="true"
                                     >
                                       <path
-                                        fill-rule="evenodd"
+                                        fillRule="evenodd"
                                         d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
                                       ></path>
                                     </svg>
                                   </span>
                                 </span>
-                                <span class="Polaris-Button__Text">
+                                <span className="Polaris-Button__Text">
                                   Livré au client
                                 </span>
                               </span>
@@ -592,7 +629,7 @@ export default function OrderDetail() {
                         )}
 
                         <button
-                          class="Polaris-Button Polaris-Button--sizeSlim"
+                          className="Polaris-Button Polaris-Button--sizeSlim"
                           type="button"
                           style={{
                             backgroundColor: "#17D438",
@@ -600,31 +637,31 @@ export default function OrderDetail() {
                           }}
                           onClick={() => processOrder(handle, product_id, "bl")}
                         >
-                          <span class="Polaris-Button__Content">
-                            <span class="Polaris-Button__Icon">
-                              <span class="Polaris-Icon">
-                                <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                          <span className="Polaris-Button__Content">
+                            <span className="Polaris-Button__Icon">
+                              <span className="Polaris-Icon">
+                                <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
                                 <svg
                                   viewBox="0 0 20 20"
-                                  class="Polaris-Icon__Svg"
+                                  className="Polaris-Icon__Svg"
                                   focusable="false"
                                   aria-hidden="true"
                                 >
                                   <path
-                                    fill-rule="evenodd"
+                                    fillRule="evenodd"
                                     d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
                                   ></path>
                                 </svg>
                               </span>
                             </span>
-                            <span class="Polaris-Button__Text">
+                            <span className="Polaris-Button__Text">
                               Imprimer le bon de livraison
                             </span>
                           </span>
                         </button>
 
                         <button
-                          class="Polaris-Button Polaris-Button--sizeSlim"
+                          className="Polaris-Button Polaris-Button--sizeSlim"
                           type="button"
                           style={{
                             backgroundColor: "#226666",
@@ -634,30 +671,30 @@ export default function OrderDetail() {
                             processOrder(handle, product_id, "bill")
                           }
                         >
-                          <span class="Polaris-Button__Content">
-                            <span class="Polaris-Button__Icon">
-                              <span class="Polaris-Icon">
-                                <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                          <span className="Polaris-Button__Content">
+                            <span className="Polaris-Button__Icon">
+                              <span className="Polaris-Icon">
+                                <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
                                 <svg
                                   viewBox="0 0 20 20"
-                                  class="Polaris-Icon__Svg"
+                                  className="Polaris-Icon__Svg"
                                   focusable="false"
                                   aria-hidden="true"
                                 >
                                   <path
-                                    fill-rule="evenodd"
+                                    fillRule="evenodd"
                                     d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
                                   ></path>
                                 </svg>
                               </span>
                             </span>
-                            <span class="Polaris-Button__Text">
+                            <span className="Polaris-Button__Text">
                               Imprimer la facture
                             </span>
                           </span>
                         </button>
                         <button
-                          class="Polaris-Button Polaris-Button--sizeSlim"
+                          className="Polaris-Button Polaris-Button--sizeSlim"
                           type="button"
                           style={{
                             backgroundColor: "#AA3939",
@@ -667,24 +704,24 @@ export default function OrderDetail() {
                             processOrder(handle, product_id, "refund")
                           }
                         >
-                          <span class="Polaris-Button__Content">
-                            <span class="Polaris-Button__Icon">
-                              <span class="Polaris-Icon">
-                                <span class="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
+                          <span className="Polaris-Button__Content">
+                            <span className="Polaris-Button__Icon">
+                              <span className="Polaris-Icon">
+                                <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
                                 <svg
                                   viewBox="0 0 20 20"
-                                  class="Polaris-Icon__Svg"
+                                  className="Polaris-Icon__Svg"
                                   focusable="false"
                                   aria-hidden="true"
                                 >
                                   <path
-                                    fill-rule="evenodd"
+                                    fillRule="evenodd"
                                     d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
                                   ></path>
                                 </svg>
                               </span>
                             </span>
-                            <span class="Polaris-Button__Text">
+                            <span className="Polaris-Button__Text">
                               Rembourser le client
                             </span>
                           </span>
@@ -694,38 +731,114 @@ export default function OrderDetail() {
                   }}
                 />
               </LegacyCard.Section>
-              <LegacyCard.Section title="Résumé de la commande">
-                <HorizontalGrid gap="4">
-                  <Text as="p">Sous-total : {order.current_total_price} €</Text>
-                  <Text as="p">
-                    Nombre d'articles : {order.line_items.length}
-                  </Text>
-                  <Text as="p">
-                    Point de retrait :{" "}
-                    {order.shipping_lines.length >= 1
-                      ? order.shipping_lines[0].title
-                      : ""}
-                  </Text>
-                  <Text as="p">Total : {order.total_price} €</Text>
-                  <Text as="p" fontWeight="semibold">
-                    Moyen de paiement
-                  </Text>
-                  <List type="bullet">
-                    {order.payment_gateway_names.map(
-                      (payment_gateway_name, index) => (
-                        <List.Item key={index}>
-                          {payment_gateway_name === "gift_card"
-                            ? "Abondement"
-                            : payment_gateway_name === "manual"
-                            ? "Manuel"
-                            : payment_gateway_name}
-                        </List.Item>
-                      )
-                    )}
-                  </List>
+            </LegacyCard>
+            <LegacyCard
+              title={
+                <Badge icon={MarkPaidMinor} size="large">
+                  Payée
+                </Badge>
+              }
+            >
+              <LegacyCard.Section>
+                <Box borderColor="border" borderWidth="1" padding="3">
+                  <LegacyCard.Subsection>
+                    <HorizontalGrid>
+                      <Text as="p">
+                        Sous-total : {order.current_total_price} €
+                      </Text>
+                    </HorizontalGrid>
+                    <HorizontalGrid>
+                      <Text as="p">
+                        Nombre d'articles : {order.line_items.length}
+                      </Text>
+                    </HorizontalGrid>
+                    <HorizontalGrid>
+                      <Text as="p">
+                        Point de retrait :{" "}
+                        {order.shipping_lines.length >= 1
+                          ? order.shipping_lines[0].title
+                          : ""}
+                      </Text>
+                    </HorizontalGrid>
+                    <HorizontalGrid>
+                      <Text as="p">Total : {order.total_price} €</Text>
+                    </HorizontalGrid>
+                    <HorizontalGrid>
+                      <Text as="p" fontWeight="semibold">
+                        Moyen de paiement
+                      </Text>
+                      <List type="bullet">
+                        {order.payment_gateway_names.map(
+                          (payment_gateway_name, index) => (
+                            <List.Item key={index}>
+                              {payment_gateway_name === "gift_card"
+                                ? "Abondement"
+                                : payment_gateway_name === "manual"
+                                ? "Manuel"
+                                : payment_gateway_name}
+                            </List.Item>
+                          )
+                        )}
+                      </List>
+                    </HorizontalGrid>
+                  </LegacyCard.Subsection>
+                </Box>
+              </LegacyCard.Section>
+            </LegacyCard>
+          </Grid.Cell>
+          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 2, lg: 4, xl: 4 }}>
+            <LegacyCard title="Client" actions={[]}>
+              <LegacyCard.Section title="Coordonnées">
+                <HorizontalGrid>
+                  <Link dataPrimaryLink url={`/salaries/${order.customer.id}`}>
+                    <Text as="span">{order.customer.email}</Text>
+                  </Link>
+                  <Text as="span">{order.customer.first_name}</Text>
+                  <Text as="span">{order.customer.last_name}</Text>
+                  <Text as="span">{order.customer.phone}</Text>
+                </HorizontalGrid>
+              </LegacyCard.Section>
+              <LegacyCard.Section title="Adresse d'expédition">
+                {order.shipping_address ? (
+                  <Text as="span">{order.shipping_address?.address1}</Text>
+                ) : (
+                  <Text as="span">Aucune adresse d'expédition fournie</Text>
+                )}
+              </LegacyCard.Section>
+              <LegacyCard.Section title="Adresse de facturation">
+                <HorizontalGrid>
+                  <Text as="span">{order.billing_address?.name}</Text>
+                  <Text as="span">{order.billing_address?.city}</Text>
+                  <Text as="span">{order.billing_address?.country}</Text>
                 </HorizontalGrid>
               </LegacyCard.Section>
             </LegacyCard>
+          </Grid.Cell>
+        </Grid>
+        <Grid>
+          <Grid.Cell
+            columnSpan={{ xs: 6, sm: 6, md: 4, lg: 11, xl: 11 }}
+          ></Grid.Cell>
+          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 2, lg: 1, xl: 1 }}>
+            {order.metafields.length >= 2 && order.metafields[1].value == false ? (
+              <button
+                className="Polaris-Button Polaris-Button--sizeSlim"
+                type="button"
+                style={{
+                  backgroundColor: "#e51c00",
+                  color: "white",
+                }}
+                onClick={handleDeleteOrder}
+              >
+                <span className="Polaris-Button__Content">
+                  <span className="Polaris-Button__Text">
+                    Supprimer la commande
+                  </span>
+                </span>
+              </button>
+            ) : (
+              ""
+            )}
           </Grid.Cell>
         </Grid>
         {toastMarkup1}
