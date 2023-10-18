@@ -1145,6 +1145,19 @@ export default function OrdersPage() {
     >
       <div>
         <Modal open={isLoading} loading small></Modal>
+        <style>
+          {`
+            .Polaris-Modal-CloseButton { 
+              display: none;
+            }
+            .Polaris-Modal-Dialog__Modal.Polaris-Modal-Dialog--sizeSmall {
+              max-width: 5rem;
+            }
+            .Polaris-HorizontalStack {
+              --pc-horizontal-stack-gap-xs: var(--p-space-0) !important;
+            }
+          `}
+        </style>
       </div>
       <Layout>
         <Layout.Section>

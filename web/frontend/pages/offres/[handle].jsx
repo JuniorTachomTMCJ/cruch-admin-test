@@ -617,6 +617,19 @@ export default function OffreDetail() {
       >
         <div>
           <Modal open={isLoading} loading small></Modal>
+          <style>
+            {`
+            .Polaris-Modal-CloseButton { 
+              display: none;
+            }
+            .Polaris-Modal-Dialog__Modal.Polaris-Modal-Dialog--sizeSmall {
+              max-width: 5rem;
+            }
+            .Polaris-HorizontalStack {
+              --pc-horizontal-stack-gap-xs: var(--p-space-0) !important;
+            }
+          `}
+          </style>
         </div>
         <div>
           <Modal
@@ -976,7 +989,8 @@ export default function OffreDetail() {
                         },
                         {
                           content: <Text color="critical">Retirer</Text>,
-                          onAction: () => handleRemoveSubCollection(id.match(/\/(\d+)$/)[1]),
+                          onAction: () =>
+                            handleRemoveSubCollection(id.match(/\/(\d+)$/)[1]),
                         },
                       ]}
                       persistActions
