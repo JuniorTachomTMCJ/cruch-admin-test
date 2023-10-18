@@ -1,8 +1,8 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-name = "creuch_workspace"
-client_id = "d612b4cff032e7c9374665cb02060548"
-application_url = "https://therapist-scsi-limit-competing.trycloudflare.com"
+name = "Admin Creuch"
+client_id = "09be7311801190a8dfa85501d6178bef"
+application_url = "https://certification-carolina-makes-textbook.trycloudflare.com"
 embedded = true
 
 [access_scopes]
@@ -11,9 +11,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://therapist-scsi-limit-competing.trycloudflare.com/auth/callback",
-  "https://therapist-scsi-limit-competing.trycloudflare.com/auth/shopify/callback",
-  "https://therapist-scsi-limit-competing.trycloudflare.com/api/auth/callback"
+  "https://certification-carolina-makes-textbook.trycloudflare.com/auth/callback",
+  "https://certification-carolina-makes-textbook.trycloudflare.com/auth/shopify/callback",
+  "https://certification-carolina-makes-textbook.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
