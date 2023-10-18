@@ -1,1 +1,1 @@
-web: PORT=8000 npm run dev
+web: npm run dev --port=3500
