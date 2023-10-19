@@ -45,6 +45,16 @@ if (host === "localhost") {
 export default defineConfig({
   root: dirname(fileURLToPath(import.meta.url)),
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      external: ['xlsx'],
+/*       output: {
+        globals: {
+          vue: 'Vue'
+        }
+      } */
+    }
+  },
   define: {
     "process.env.SHOPIFY_API_KEY": JSON.stringify(process.env.SHOPIFY_API_KEY),
   },
