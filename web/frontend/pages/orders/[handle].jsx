@@ -672,7 +672,6 @@ export default function OrderDetail() {
                             </span>
                           </span>
                         </button>
-
                         <button
                           className="Polaris-Button Polaris-Button--sizeSlim"
                           type="button"

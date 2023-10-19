@@ -76,13 +76,16 @@ export default function LoginPage() {
   const yesterday = new Date(
     new Date(new Date().setDate(today.getDate() - 1)).setHours(0, 0, 0, 0)
   );
+  function setEndOfDay(date) {
+    return new Date(new Date(date).setHours(23, 59, 59, 999));
+  }
   const ranges = [
     {
       title: "Aujourd'hui",
       alias: "today",
       period: {
         since: today,
-        until: today,
+        until: setEndOfDay(today),
       },
     },
     {
@@ -90,7 +93,7 @@ export default function LoginPage() {
       alias: "yesterday",
       period: {
         since: yesterday,
-        until: yesterday,
+        until: setEndOfDay(yesterday),
       },
     },
     {
@@ -100,7 +103,7 @@ export default function LoginPage() {
         since: new Date(
           new Date(new Date().setDate(today.getDate() - 7)).setHours(0, 0, 0, 0)
         ),
-        until: yesterday,
+        until: setEndOfDay(yesterday),
       },
     },
     {
@@ -108,7 +111,7 @@ export default function LoginPage() {
       alias: "this_month",
       period: {
         since: new Date(today.getFullYear(), today.getMonth(), 1),
-        until: today,
+        until: setEndOfDay(today),
       },
     },
     {
@@ -116,7 +119,7 @@ export default function LoginPage() {
       alias: "this_year",
       period: {
         since: new Date(today.getFullYear(), 0, 1),
-        until: today,
+        until: setEndOfDay(today),
       },
     },
   ];
@@ -204,8 +207,8 @@ export default function LoginPage() {
       setActiveDateRange((prevState) => {
         const newPeriod =
           prevState.period && newUntil >= prevState.period.since
-            ? { since: prevState.period.since, until: newUntil }
-            : { since: newUntil, until: newUntil };
+            ? { since: prevState.period.since, until: setEndOfDay(newUntil) }
+            : { since: newUntil, until: setEndOfDay(newUntil) };
         return {
           ...prevState,
           period: newPeriod,
@@ -237,7 +240,7 @@ export default function LoginPage() {
       title: "Custom",
       period: {
         since: start,
-        until: end,
+        until: setEndOfDay(end),
       },
     };
     setActiveDateRange(newDateRange);
@@ -260,111 +263,7 @@ export default function LoginPage() {
   function cancel() {
     setPopoverActive(false);
   }
-  useEffect(() => {
-    if (activeDateRange) {
-      setInputValues({
-        since: formatDate(activeDateRange.period.since),
-        until: formatDate(activeDateRange.period.until),
-      });
-      function monthDiff(referenceDate, newDate) {
-        return (
-          newDate.month -
-          referenceDate.month +
-          12 * (referenceDate.year - newDate.year)
-        );
-      }
-      const monthDifference = monthDiff(
-        { year, month },
-        {
-          year: activeDateRange.period.until.getFullYear(),
-          month: activeDateRange.period.until.getMonth(),
-        }
-      );
-      if (monthDifference > 1 || monthDifference < 0) {
-        setDate({
-          month: activeDateRange.period.until.getMonth(),
-          year: activeDateRange.period.until.getFullYear(),
-        });
-      }
-    }
-  }, [activeDateRange]);
-  const buttonValue =
-    activeDateRange.title === "Custom"
-      ? activeDateRange.period.since.toDateString() +
-        " - " +
-        activeDateRange.period.until.toDateString()
-      : activeDateRange.title;
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // const cachedData = localStorage.getItem("dashboardData");
-        // if (cachedData) {
-        //   const cachedStats = JSON.parse(cachedData);
-        //   setCollections(cachedStats.collections);
-        //   setCustomers(cachedStats.customers);
-        //   setLocations(cachedStats.locations);
-        //   setOrders(cachedStats.orders);
-        //   setReductions(cachedStats.reductions);
-        // } else {
-          setIsLoading(true);
-          const statsResponse = await fetch(
-            `https://staging.api.creuch.fr/api/statistics`,
-            {
-              method: "POST",
-              headers: {
-                "Content-type": "application/json",
-              },
-            }
-          );
-          const data = await statsResponse.json();
-          console.log(data);
-          setCollections(data["collections"]);
-          setEntreprises(data["entreprises"]);
-          setCustomers(data["customers"]);
-          setLocations(data["locations"]);
-          setOrders(data["orders"]);
-          setReductions(data["reductions"]);
-
-        //   localStorage.setItem(
-        //     "dashboardData",
-        //     JSON.stringify({
-        //       collections: data["collections"],
-        //       customers: data["customers"],
-        //       locations: data["locations"],
-        //       orders: data["orders"],
-        //       reductions: data["reductions"],
-        //     })
-        //   );
-        // }
-
-        if (collections.length >= 1 && orders.length >= 1 && reductions.length >= 1 && customers.length >= 1) {
-          const stats = getAllStatistics(
-            selectedCollections,
-            selectedEntreprises,
-            activeDateRange.period.since,
-            activeDateRange.period.until,
-            collections,
-            entreprises,
-            orders,
-            reductions,
-            customers
-          );
-          setStats(stats);
-        }
-      } catch (error) {
-        console.error(
-          "Erreur de chargement des statistiques globales :",
-          error
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
+  
   function getAllStatistics(
     collectionsIds,
     entreprisesIds,
@@ -734,43 +633,6 @@ export default function LoginPage() {
     [selectedEntreprises]
   );
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const stats = getAllStatistics(
-          selectedCollections,
-          selectedEntreprises,
-          activeDateRange.period.since,
-          activeDateRange.period.until,
-          collections,
-          entreprises,
-          orders,
-          reductions,
-          customers
-        );
-        setStats(stats);
-      } catch (error) {
-        console.error(
-          "Erreur de chargement des statistiques globales :",
-          error
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [
-    selectedCollections,
-    selectedEntreprises,
-    activeDateRange,
-    collections,
-    entreprises,
-    orders,
-    reductions,
-    customers,
-  ]);
-
   const renderSubcategories = (parentId) => {
     const parentCollection = collections.find(
       (collection) => collection.id === parentId
@@ -882,6 +744,103 @@ export default function LoginPage() {
     writeFileXLSX(wb, "Statistiques.xlsx");
   };
 
+  useEffect(() => {
+    if (activeDateRange) {
+      setInputValues({
+        since: formatDate(activeDateRange.period.since),
+        until: formatDate(activeDateRange.period.until),
+      });
+      function monthDiff(referenceDate, newDate) {
+        return (
+          newDate.month -
+          referenceDate.month +
+          12 * (referenceDate.year - newDate.year)
+        );
+      }
+      const monthDifference = monthDiff(
+        { year, month },
+        {
+          year: activeDateRange.period.until.getFullYear(),
+          month: activeDateRange.period.until.getMonth(),
+        }
+      );
+      if (monthDifference > 1 || monthDifference < 0) {
+        setDate({
+          month: activeDateRange.period.until.getMonth(),
+          year: activeDateRange.period.until.getFullYear(),
+        });
+      }
+      const stats = getAllStatistics(
+        selectedCollections,
+        selectedEntreprises,
+        activeDateRange.period.since,
+        activeDateRange.period.until,
+        collections,
+        entreprises,
+        orders,
+        reductions,
+        customers
+      );
+      setStats(stats);
+    }
+  }, [
+    selectedCollections,
+    selectedEntreprises,
+    activeDateRange,
+    collections,
+    entreprises,
+    orders,
+    reductions,
+    customers,
+  ]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const statsResponse = await fetch(
+          `https://staging.api.creuch.fr/api/statistics`,
+          {
+            method: "POST",
+            headers: {
+              "Content-type": "application/json",
+            },
+          }
+        );
+        const data = await statsResponse.json();
+        console.log(data);
+        setCollections(data["collections"]);
+        setEntreprises(data["entreprises"]);
+        setCustomers(data["customers"]);
+        setLocations(data["locations"]);
+        setOrders(data["orders"]);
+        setReductions(data["reductions"]);
+
+        const stats = getAllStatistics(
+          selectedCollections,
+          selectedEntreprises,
+          activeDateRange.period.since,
+          activeDateRange.period.until,
+          collections,
+          entreprises,
+          orders,
+          reductions,
+          customers
+        );
+        setStats(stats);
+      } catch (error) {
+        console.error(
+          "Erreur de chargement des statistiques globales :",
+          error
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   if (isLoading) {
     return (
       <div style={{ height: "100px" }}>
@@ -925,7 +884,11 @@ export default function LoginPage() {
                     icon={CalendarMinor}
                     onClick={() => setPopoverActive(!popoverActive)}
                   >
-                    {buttonValue}
+                    {activeDateRange.title === "Custom"
+                      ? activeDateRange.period.since.toDateString() +
+                        " - " +
+                        activeDateRange.period.until.toDateString()
+                      : activeDateRange.title}
                   </Button>
                 }
                 onClose={() => setPopoverActive(false)}
@@ -1106,7 +1069,9 @@ export default function LoginPage() {
                   <Divider borderColor="border" />
                   <Text as="h1">Offres : {collections.length} </Text>
                   <Divider borderColor="border" />
-                  <Text as="h1">Nombre d'inscrits : {stats.count_salarie_register} </Text>
+                  <Text as="h1">
+                    Nombre d'inscrits : {stats.count_salarie_register}{" "}
+                  </Text>
                   <Divider borderColor="border" />
                   <Text as="h1">Points de retraits : {locations.length} </Text>
                 </VerticalStack>
@@ -1188,6 +1153,19 @@ export default function LoginPage() {
                         loading
                         small
                       ></Modal>
+                      <style>
+                        {`
+                          .Polaris-Modal-CloseButton { 
+                            display: none;
+                          }
+                          .Polaris-Modal-Dialog__Modal.Polaris-Modal-Dialog--sizeSmall {
+                            max-width: 5rem;
+                          }
+                          .Polaris-HorizontalStack {
+                            --pc-horizontal-stack-gap-xs: var(--p-space-0) !important;
+                          }
+                        `}
+                      </style>
                     </div>
                   )}
                 </LegacyCard.Section>
@@ -1228,6 +1206,20 @@ export default function LoginPage() {
                         loading
                         small
                       ></Modal>
+
+                      <style>
+                        {`
+                          .Polaris-Modal-CloseButton { 
+                            display: none;
+                          }
+                          .Polaris-Modal-Dialog__Modal.Polaris-Modal-Dialog--sizeSmall {
+                            max-width: 5rem;
+                          }
+                          .Polaris-HorizontalStack {
+                            --pc-horizontal-stack-gap-xs: var(--p-space-0) !important;
+                          }
+                        `}
+                      </style>
                     </div>
                   )}
                 </LegacyCard.Section>
