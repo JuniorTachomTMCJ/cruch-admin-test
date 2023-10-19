@@ -2,7 +2,7 @@
 
 name = "creuch_workspace"
 client_id = "d612b4cff032e7c9374665cb02060548"
-application_url = "https://therapist-scsi-limit-competing.trycloudflare.com"
+application_url = "https://suitable-otherwise-saves-camera.trycloudflare.com"
 embedded = true
 
 [access_scopes]
@@ -11,9 +11,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://therapist-scsi-limit-competing.trycloudflare.com/auth/callback",
-  "https://therapist-scsi-limit-competing.trycloudflare.com/auth/shopify/callback",
-  "https://therapist-scsi-limit-competing.trycloudflare.com/api/auth/callback"
+  "https://suitable-otherwise-saves-camera.trycloudflare.com/auth/callback",
+  "https://suitable-otherwise-saves-camera.trycloudflare.com/auth/shopify/callback",
+  "https://suitable-otherwise-saves-camera.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]

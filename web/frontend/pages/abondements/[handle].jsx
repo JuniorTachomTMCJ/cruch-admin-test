@@ -155,6 +155,19 @@ export default function AbondementPage() {
       >
         <div>
           <Modal open={isLoading} loading small></Modal>
+          <style>
+            {`
+            .Polaris-Modal-CloseButton { 
+              display: none;
+            }
+            .Polaris-Modal-Dialog__Modal.Polaris-Modal-Dialog--sizeSmall {
+              max-width: 5rem;
+            }
+            .Polaris-HorizontalStack {
+              --pc-horizontal-stack-gap-xs: var(--p-space-0) !important;
+            }
+          `}
+          </style>
         </div>
         <Grid>
           <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}>

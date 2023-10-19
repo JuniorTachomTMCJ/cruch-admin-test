@@ -37,7 +37,6 @@ export default function ClientDetail() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
   
-
   const { handle } = useParams();
   const [client, setClient] = useState({});
   const [metafields, setMetafields] = useState([]);
@@ -571,7 +570,7 @@ export default function ClientDetail() {
         title={`${client.first_name} ${client.last_name}`}
         subtitle={`${client.default_address?.city}, ${client.default_address?.country}`}
         compactTitle
-/*         secondaryActions={[
+        /* secondaryActions={[
           {
             content: (
               <div style={{ display: "inline-flex", alignItems: "center" }}>
@@ -620,6 +619,19 @@ export default function ClientDetail() {
       >
         <div>
           <Modal open={isLoading} loading small></Modal>
+          <style>
+            {`
+            .Polaris-Modal-CloseButton { 
+              display: none;
+            }
+            .Polaris-Modal-Dialog__Modal.Polaris-Modal-Dialog--sizeSmall {
+              max-width: 5rem;
+            }
+            .Polaris-HorizontalStack {
+              --pc-horizontal-stack-gap-xs: var(--p-space-0) !important;
+            }
+          `}
+          </style>
         </div>
         <div>
           <Modal

@@ -22,9 +22,23 @@ import {
   Button,
   Icon,
   Grid,
+  Popover,
+  HorizontalGrid,
+  Scrollable,
+  OptionList,
+  VerticalStack,
+  HorizontalStack,
+  TextField,
+  DatePicker,
+  
 } from "@shopify/polaris";
-import { ImageMajor, ExportMinor } from "@shopify/polaris-icons";
-import { useState, useEffect, useCallback } from "react";
+import {
+  ImageMajor,
+  ExportMinor,
+  CalendarMinor,
+  ArrowRightMinor,
+} from "@shopify/polaris-icons";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Redirect } from '@shopify/app-bridge/actions';
 import { utils, writeFileXLSX } from "xlsx";
@@ -34,19 +48,74 @@ export default function OrdersPage() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
 
-  
-  
   const [isLoading, setIsLoading] = useState(true);
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
-  const [select, setSelect] = useState('');
-  const options = [];
-
+  const [entreprises, setEntreprises] = useState([]);
   const [cse, setCse] = useState([]);
+  const [commandeStatus, setCommandeStatus] = useState([]);
+  const [paiementStatus, setPaiementStatus] = useState([]);
+  const [queryValue, setQueryValue] = useState("");
+
+  const mdDown = false;
+  const today = new Date(new Date().setHours(0, 0, 0, 0));
+  const yesterday = new Date(
+    new Date(new Date().setDate(today.getDate() - 1)).setHours(0, 0, 0, 0)
+  );
+  const ranges = [
+    {
+      title: "Aujourd'hui",
+      alias: "today",
+      period: {
+        since: today,
+        until: today,
+      },
+    },
+    {
+      title: "Hier",
+      alias: "yesterday",
+      period: {
+        since: yesterday,
+        until: yesterday,
+      },
+    },
+    {
+      title: "7 derniers jours",
+      alias: "last7days",
+      period: {
+        since: new Date(
+          new Date(new Date().setDate(today.getDate() - 7)).setHours(0, 0, 0, 0)
+        ),
+        until: yesterday,
+      },
+    },
+    {
+      title: "Ce mois-ci",
+      alias: "this_month",
+      period: {
+        since: new Date(today.getFullYear(), today.getMonth(), 1),
+        until: today,
+      },
+    },
+    {
+      title: "Cette année",
+      alias: "this_year",
+      period: {
+        since: new Date(today.getFullYear(), 0, 1),
+        until: today,
+      },
+    },
+  ];
+  const [popoverActive, setPopoverActive] = useState(false);
+  const [activeDateRange, setActiveDateRange] = useState(ranges[0]);
+  const [inputValues, setInputValues] = useState({});
+  const [{ month, year }, setDate] = useState({
+    month: activeDateRange.period.since.getMonth(),
+    year: activeDateRange.period.since.getFullYear(),
+  });
+  const datePickerRef = useRef(null);
+  const VALID_YYYY_MM_DD_DATE_REGEX = /^\d{4}-\d{1,2}-\d{1,2}/;
   
-
-
-
   function formatDateTime(dateTimeString) {
     const inputDate = new Date(dateTimeString);
     const options = {
@@ -121,7 +190,7 @@ export default function OrdersPage() {
     switch (status) {
       case "fulfilled":
         return (
-          <Badge progress="complete" status="fulfilled">
+          <Badge progress="complete" status="success">
             Traitée
           </Badge>
         );
@@ -152,69 +221,76 @@ export default function OrdersPage() {
     }
   }
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const rowMarkup = filteredOrders.map((order, index) => {
+    let totalGiftCardAmount = 0;
 
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
-  };
-
-  const start = (currentPage - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
-  const paginatedData = filteredOrders.slice(start, end);
-
-  const rowMarkup = paginatedData.map((order, index) => (
-    <IndexTable.Row
-      id={order.id}
-      key={order.id}
-      selected={selectedResources.includes(order.id)}
-      position={index}
-      subdued={
-        order.fulfillment_status === null
-          ? false
-          : order.fulfillment_status === "fulfilled"
-          ? true
-          : false
+    order.transactions.forEach((transaction) => {
+      if (
+        transaction.gateway === "gift_card" &&
+        transaction.status === "success"
+      ) {
+        totalGiftCardAmount += parseFloat(transaction.amount);
       }
-      status={
-        order.fulfillment_status === null
-          ? ""
-          : order.fulfillment_status === "fulfilled"
-          ? "subdued"
-          : ""
-      }
-    >
-      <IndexTable.Cell>
-        <Link
-          dataPrimaryLink
-          url={`/orders/${order.id}`}
-          monochrome
-          removeUnderline
-        >
-          <Text variant="bodyMd" fontWeight="bold" as="span">
-            {order.name}
-          </Text>
-        </Link>
-      </IndexTable.Cell>
-      <IndexTable.Cell>{formatDateTime(order.created_at)}</IndexTable.Cell>
-      <IndexTable.Cell>
-        {`${order.customer.first_name} ${order.customer.last_name}`}
-      </IndexTable.Cell>
-      <IndexTable.Cell>{`${order.total_discounts} €`}</IndexTable.Cell>
-      <IndexTable.Cell>{`${order.total_price} €`}</IndexTable.Cell>
-      <IndexTable.Cell>
-        {financialStatusBadge(order.financial_status)}
-      </IndexTable.Cell>
-      <IndexTable.Cell>
-        {fulfillmentStatusBadge(order.fulfillment_status)}
-      </IndexTable.Cell>
-    </IndexTable.Row>
-  ));
+    });
+
+    return (
+      <IndexTable.Row
+        id={order.id}
+        key={order.id}
+        selected={selectedResources.includes(order.id)}
+        position={index}
+        subdued={
+          order.fulfillment_status === null
+            ? false
+            : order.fulfillment_status === "fulfilled"
+            ? true
+            : false
+        }
+        status={
+          order.fulfillment_status === null
+            ? ""
+            : order.fulfillment_status === "fulfilled"
+            ? "subdued"
+            : ""
+        }
+      >
+        <IndexTable.Cell>
+          <Link
+            dataPrimaryLink
+            url={`/orders/${order.id}`}
+            monochrome
+            removeUnderline
+          >
+            <Text variant="bodyMd" fontWeight="bold" as="span">
+              {order.name}
+            </Text>
+          </Link>
+        </IndexTable.Cell>
+        <IndexTable.Cell>{formatDateTime(order.created_at)}</IndexTable.Cell>
+        <IndexTable.Cell>
+          {`${order.customer.first_name} ${order.customer.last_name}`}
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+          {`${totalGiftCardAmount} €`}
+        </IndexTable.Cell>
+        <IndexTable.Cell>{`${order.total_price} €`}</IndexTable.Cell>
+        <IndexTable.Cell>
+          {financialStatusBadge(order.financial_status)}
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+          {fulfillmentStatusBadge(order.fulfillment_status)} {" "}
+          {order.cancelled_at ? (<Badge progress="complete" status="fulfilled">Annulée</Badge>) : ""} {" "}
+          {order.metafields[1]?.value ? (<Badge progress="complete" status="critical">Supprimée</Badge>) : ""}
+        </IndexTable.Cell>
+      </IndexTable.Row>
+    );
+  });
 
   const exportToExcel = async () => {
-    const tableau = paginatedData.map((order, index) => {
+    const tableau = filteredOrders.map((order, index) => {
       const status = order.financial_status;
       const status_order = order.fulfillment_status;
+      const isCancelled = order.cancelled_at !== null;
       return {
         Commande: order.name,
         Date: formatDateTime(order.created_at),
@@ -234,7 +310,7 @@ export default function OrdersPage() {
             ? "En attente"
             : "État inconnu",
         "Statut des commandes":
-          status_order === "fulfilled"
+          (status_order === "fulfilled"
             ? "Traitée"
             : status_order === null
             ? "En cours"
@@ -242,7 +318,7 @@ export default function OrdersPage() {
             ? "Traitement partielle"
             : status_order === "restocked"
             ? "Restockage"
-            : "État inconnu",
+            : "État inconnu") + (isCancelled ? ", Annulée" : ""),
       };
     });
     const wb = utils.book_new();
@@ -443,7 +519,19 @@ export default function OrdersPage() {
   );
 
   const {mode, setMode} = useSetIndexFiltersMode();
-  const onHandleCancel = () => {};
+  const onHandleCancel = () => {
+    setCse([]);
+    setCommandeStatus([]);
+    setPaiementStatus([]);
+    let orders_temp = [];
+    orders.forEach((order) => {
+      const orderDate = new Date(order.created_at);
+      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+        orders_temp.push(order);
+      }
+    });
+    setFilteredOrders(orders_temp);
+  };
 
   const onHandleSave = async () => {
     await sleep(1);
@@ -466,73 +554,105 @@ export default function OrdersPage() {
         };
   
   
-       
-  const [commandeStatus, setCommandeStatus] = useState([]);
-  const [paiementStatus, setPaiementStatus] = useState([]);
-  const [queryValue, setQueryValue] = useState('');
-
   const handleCommandeStatusChange = useCallback(
     (value) => {
       setCommandeStatus(value);
-      const filteredOrders = orders.filter((order) => {
+      const updatedFilteredOrders = orders.filter((order) => {
         if (value.length === 0) {
           return true;
         }
-        return value.includes(String(order.fulfillment_status));
+        return value == "cancel" ? order.cancelled_at != null : value.includes(String(order.fulfillment_status));
       });
-
-      setFilteredOrders(filteredOrders);
+      let orders_temp = [];
+      updatedFilteredOrders.forEach((order) => {
+        const orderDate = new Date(order.created_at);
+        if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+          orders_temp.push(order);
+        }
+      });
+      setFilteredOrders(orders_temp);
     },
-    [orders, filteredOrders]
+    [orders, activeDateRange]
   );
+
   const handlePaiementStatusChange = useCallback(
     (value) => {
       setPaiementStatus(value);
-      const filteredOrders = orders.filter((order) => {
+      const updatedFilteredOrders = orders.filter((order) => {
         if (value.length === 0) {
           return true;
         }
         return value.includes(String(order.financial_status));
       });
-
-      setFilteredOrders(filteredOrders);
+      let orders_temp = [];
+      updatedFilteredOrders.forEach((order) => {
+        const orderDate = new Date(order.created_at);
+        if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+          orders_temp.push(order);
+        }
+      });
+      setFilteredOrders(orders_temp);
     },
-    [orders, filteredOrders]
+    [orders, activeDateRange]
   );
 
-  const handleFiltersQueryChange = useCallback((value) => {
-    setQueryValue(value);
-    const searchValueLower = value.toLowerCase();
-    if (searchValueLower === "") {
-      setFilteredOrders(orders);
-    } else {
-      const filteredOrders = orders.filter(
-        (order) =>
-          order.name.toLowerCase().includes(searchValueLower) ||
-          `${order.customer.first_name} ${order.customer.last_name}`
-            .toLowerCase()
-            .includes(searchValueLower) ||
-          order.total_discounts
-            .toString()
-            .toLowerCase()
-            .includes(searchValueLower) ||
-          order.total_price
-            .toString()
-            .toLowerCase()
-            .includes(searchValueLower) ||
-          order.financial_status.toLowerCase().includes(searchValueLower) ||
-          (order.fulfillment_status &&
-            order.fulfillment_status.toLowerCase().includes(searchValueLower))
-      );
-      setFilteredOrders(filteredOrders);
-    }
-  }, [orders]);
+  const handleCseChange = useCallback(
+    (value) => {
+      setCse(value);
+      const updatedFilteredOrders = orders.filter((order) => {
+        if (value.length === 0) {
+          return true;
+        }
+        return value.includes(String(order.client.entreprise.code_cse.value));
+      });
+      let orders_temp = [];
+      updatedFilteredOrders.forEach((order) => {
+        const orderDate = new Date(order.created_at);
+        if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+          orders_temp.push(order);
+        }
+      });
+      setFilteredOrders(orders_temp);
+    },
+    [orders, activeDateRange]
+  );
+
+  const handleFiltersQueryChange = useCallback(
+    (value) => {
+      setQueryValue(value);
+      const searchValueLower = value.toLowerCase();
+      if (searchValueLower === "") {
+        setFilteredOrders(filteredOrders);
+      } else {
+        const updatedFilteredOrders = filteredOrders.filter(
+          (order) =>
+            order.name.toLowerCase().includes(searchValueLower) ||
+            `${order.customer.first_name} ${order.customer.last_name}`
+              .toLowerCase()
+              .includes(searchValueLower) ||
+            order.total_discounts
+              .toString()
+              .toLowerCase()
+              .includes(searchValueLower) ||
+            order.total_price
+              .toString()
+              .toLowerCase()
+              .includes(searchValueLower) ||
+            order.financial_status.toLowerCase().includes(searchValueLower) ||
+            (order.fulfillment_status &&
+              order.fulfillment_status.toLowerCase().includes(searchValueLower))
+        );
+        setFilteredOrders(updatedFilteredOrders);
+      }
+    },
+    [filteredOrders]
+  );
 
   const handleFiltersQueryClear = useCallback(() => {
     setQueryValue("");
-    var filteredOrders = orders;
+    const updatedFilteredOrders = orders;
     if (paiementStatus.length >= 1) {
-      filteredOrders = filteredOrders.filter((order) => {
+      updatedFilteredOrders = updatedFilteredOrders.filter((order) => {
         if (paiementStatus.length === 0) {
           return true;
         }
@@ -540,53 +660,98 @@ export default function OrdersPage() {
       });
     }
     if (commandeStatus.length >= 1) {
-      filteredOrders = filteredOrders.filter((order) => {
-        if (commandeStatus.length === 0) {
-          return true;
-        }
-        return commandeStatus.includes(String(order.fulfillment_status));;
-      });
-    }
-    setFilteredOrders(filteredOrders);
-  }, [orders]);
-
-  const handleCommandeStatusRemove = useCallback(() => {
-    setCommandeStatus([]);
-    var filteredOrders = orders;
-    if (paiementStatus.length >= 1) {
-      filteredOrders = filteredOrders.filter((order) => {
-        if (paiementStatus.length === 0) {
-          return true;
-        }
-        return paiementStatus.includes(String(order.financial_status));
-      });
-    }
-    setFilteredOrders(filteredOrders);
-  }, [orders]);
-
-  const handlePaiementStatusRemove = useCallback(() => {
-    setPaiementStatus([]);
-    var filteredOrders = orders;
-    if (commandeStatus.length >= 1) {
-      filteredOrders = filteredOrders.filter((order) => {
+      updatedFilteredOrders = updatedFilteredOrders.filter((order) => {
         if (commandeStatus.length === 0) {
           return true;
         }
         return commandeStatus.includes(String(order.fulfillment_status));
       });
     }
-    setFilteredOrders(filteredOrders);
+    let orders_temp = [];
+    updatedFilteredOrders.forEach((order) => {
+      const orderDate = new Date(order.created_at);
+      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+        orders_temp.push(order);
+      }
+    });
+    setFilteredOrders(orders_temp);
+  }, [orders, activeDateRange]);
+
+  const handleCommandeStatusRemove = useCallback(() => {
+    setCommandeStatus([]);
+    var updatedFilteredOrders = orders;
+    if (paiementStatus.length >= 1) {
+      updatedFilteredOrders = updatedFilteredOrders.filter((order) => {
+        if (paiementStatus.length === 0) {
+          return true;
+        }
+        return paiementStatus.includes(String(order.financial_status));
+      });
+    }
+    let orders_temp = [];
+    updatedFilteredOrders.forEach((order) => {
+      const orderDate = new Date(order.created_at);
+      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+        orders_temp.push(order);
+      }
+    });
+    setFilteredOrders(orders_temp);
+  }, [orders, activeDateRange]);
+
+  const handlePaiementStatusRemove = useCallback(() => {
+    setPaiementStatus([]);
+    var updatedFilteredOrders = orders;
+    if (commandeStatus.length >= 1) {
+      updatedFilteredOrders = updatedFilteredOrders.filter((order) => {
+        if (commandeStatus.length === 0) {
+          return true;
+        }
+        return commandeStatus.includes(String(order.fulfillment_status));
+      });
+    }
+    let orders_temp = [];
+    updatedFilteredOrders.forEach((order) => {
+      const orderDate = new Date(order.created_at);
+      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+        orders_temp.push(order);
+      }
+    });
+    setFilteredOrders(orders_temp);
+  }, [orders, activeDateRange]);
+
+  const handleCseRemove = useCallback(() => {
+    setCse([]);
+    let orders_temp = [];
+    orders.forEach((order) => {
+      const orderDate = new Date(order.created_at);
+      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+        orders_temp.push(order);
+      }
+    });
+    setFilteredOrders(orders_temp);
   }, [orders]);
 
-  const handleQueryValueRemove = useCallback(() => setQueryValue(''), []);
+  const handleQueryValueRemove = useCallback(() => {
+    setQueryValue("");
+    let orders_temp = [];
+    orders.forEach((order) => {
+      const orderDate = new Date(order.created_at);
+      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+        orders_temp.push(order);
+      }
+    });
+    setFilteredOrders(orders_temp);
+  }, [orders]);
 
   const handleFiltersClearAll = useCallback(() => {
     handleCommandeStatusRemove();
     handlePaiementStatusRemove();
+    handleCseRemove();
     handleQueryValueRemove();
   }, [
     handleCommandeStatusRemove,
     handlePaiementStatusRemove,
+    handleCseRemove,
     handleQueryValueRemove,
   ]);
 
@@ -622,11 +787,34 @@ export default function OrdersPage() {
           choices={[
             { label: "Traitée", value: "fulfilled" },
             { label: "En cours", value: "null" },
+            { label: "Annulé", value: "cancel" },
             // { label: "Traitement partielle", value: "partial" },
             // { label: "Restockage", value: "restocked" },
           ]}
           selected={commandeStatus || []}
           onChange={handleCommandeStatusChange}
+          allowMultiple
+        />
+      ),
+      shortcut: true,
+    },
+    {
+      key: "cse",
+      label: "CSE",
+      filter: (
+        <ChoiceList
+          title="CSE"
+          titleHidden
+          choices={[
+            ...entreprises.map((entreprise) => {
+              return {
+                label: entreprise.cse_name.value,
+                value: entreprise.code_cse.value,
+              };
+            }),
+          ]}
+          selected={cse || []}
+          onChange={handleCseChange}
           allowMultiple
         />
       ),
@@ -651,41 +839,65 @@ export default function OrdersPage() {
       onRemove: handlePaiementStatusRemove,
     });
   }
+  if (cse && !isEmpty(cse)) {
+    const key = "cse";
+    appliedFilters.push({
+      key,
+      label: disambiguateLabel(key, cse),
+      onRemove: handleCseRemove,
+    });
+  }
 
   function disambiguateLabel(key, value) {
+    let entrepriseLabels = {};
+
+    entreprises.forEach((entreprise) => {
+      entrepriseLabels[entreprise.code_cse.value] = entreprise.cse_name.value;
+    });
+
     switch (key) {
-      case 'commandeStatus':
-        return value.map((val) => {
-          switch (val) {
-            case "fulfilled":
-              return "Traitée";
-            case "null":
-              return "En cours";
-            case "partial":
-              return "Traitement partielle";
-            case "restocked":
-              return "Restockage";
-            default:
-              return "État inconnu";
-          }
-        }).join(", ");
-      case 'paiementStatus':
-        return value.map((val) => {
-          switch (val) {
-            case "paid":
-              return "Payée";
-            case "partially_refunded":
-              return "Partiellement remboursée";
-            case "partially_paid":
-              return "Partiellement payée";
-            case "refunded":
-              return "Remboursée";
-            case "pending":
-              return "En cours";
-            default:
-              return "État inconnu";
-          }
-        }).join(", ");
+      case "commandeStatus":
+        return value
+          .map((val) => {
+            switch (val) {
+              case "fulfilled":
+                return "Traitée";
+              case "null":
+                return "En cours";
+              case "partial":
+                return "Traitement partielle";
+              case "restocked":
+                return "Restockage";
+              case "cancel":
+                return "Annulé";
+              default:
+                return "État inconnu";
+            }
+          })
+          .join(", ");
+      case "paiementStatus":
+        return value
+          .map((val) => {
+            switch (val) {
+              case "paid":
+                return "Payée";
+              case "partially_refunded":
+                return "Partiellement remboursée";
+              case "partially_paid":
+                return "Partiellement payée";
+              case "refunded":
+                return "Remboursée";
+              case "pending":
+                return "En cours";
+              default:
+                return "État inconnu";
+            }
+          })
+          .join(", ");
+      case "cse":
+        return value
+          .map((val) => entrepriseLabels[val] || "État inconnu")
+          .join(", ");
       default:
         return value;
     }
@@ -699,72 +911,214 @@ export default function OrdersPage() {
     }
   }
 
-  const handleSelectChange = useCallback(
-  async (value) => {
-      console.log(value);
-      setIsLoading(true);
-      await fetch("https://staging.api.creuch.fr/api/get_orders", {
-        method: "POST",
-        body: JSON.stringify({ cse: value }),
-        headers: { "Content-type": "application/json" },
-      })
-        .then((response) => response.json())
-        .then((orders) => {
-          console.log("orders", orders);
-          setOrders(orders);
-          setFilteredOrders(orders);
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.log(err.message);
-        });
+  function isDate(date) {
+    return !isNaN(new Date(date).getDate());
+  }
+  function isValidYearMonthDayDateString(date) {
+    return VALID_YYYY_MM_DD_DATE_REGEX.test(date) && isDate(date);
+  }
+  function isValidDate(date) {
+    return date.length === 10 && isValidYearMonthDayDateString(date);
+  }
+  function parseYearMonthDayDateString(input) {
+    // Date-only strings (e.g. "1970-01-01") are treated as UTC, not local time
+    // when using new Date()
+    // We need to split year, month, day to pass into new Date() separately
+    // to get a localized Date
+    const [year, month, day] = input.split("-");
+    return new Date(Number(year), Number(month) - 1, Number(day));
+  }
+  function formatDateToYearMonthDayDateString(date) {
+    const year = String(date.getFullYear());
+    let month = String(date.getMonth() + 1);
+    let day = String(date.getDate());
+    if (month.length < 2) {
+      month = String(month).padStart(2, "0");
     }
-  );
+    if (day.length < 2) {
+      day = String(day).padStart(2, "0");
+    }
+    return [year, month, day].join("-");
+  }
+  function formatDate(date) {
+    return formatDateToYearMonthDayDateString(date);
+  }
+  function nodeContainsDescendant(rootNode, descendant) {
+    if (rootNode === descendant) {
+      return true;
+    }
+    let parent = descendant.parentNode;
+    while (parent != null) {
+      if (parent === rootNode) {
+        return true;
+      }
+      parent = parent.parentNode;
+    }
+    return false;
+  }
+  function isNodeWithinPopover(node) {
+    return datePickerRef?.current
+      ? nodeContainsDescendant(datePickerRef.current, node)
+      : false;
+  }
+  function handleStartInputValueChange(value) {
+    setInputValues((prevState) => {
+      return { ...prevState, since: value };
+    });
+    if (isValidDate(value)) {
+      const newSince = parseYearMonthDayDateString(value);
+      setActiveDateRange((prevState) => {
+        const newPeriod =
+          prevState.period && newSince <= prevState.period.until
+            ? { since: newSince, until: prevState.period.until }
+            : { since: newSince, until: newSince };
+        return {
+          ...prevState,
+          period: newPeriod,
+        };
+      });
+    }
+  }
+  function handleEndInputValueChange(value) {
+    setInputValues((prevState) => ({ ...prevState, until: value }));
+    if (isValidDate(value)) {
+      const newUntil = parseYearMonthDayDateString(value);
+      setActiveDateRange((prevState) => {
+        const newPeriod =
+          prevState.period && newUntil >= prevState.period.since
+            ? { since: prevState.period.since, until: newUntil }
+            : { since: newUntil, until: newUntil };
+        return {
+          ...prevState,
+          period: newPeriod,
+        };
+      });
+    }
+  }
+  function handleInputBlur({ relatedTarget }) {
+    const isRelatedTargetWithinPopover =
+      relatedTarget != null && isNodeWithinPopover(relatedTarget);
+    // If focus moves from the TextField to the Popover
+    // we don't want to close the popover
+    if (isRelatedTargetWithinPopover) {
+      return;
+    }
+    setPopoverActive(false);
+  }
+  function handleMonthChange(month, year) {
+    setDate({ month, year });
+  }
+  function handleCalendarChange({ start, end }) {
+    const newDateRange = ranges.find((range) => {
+      return (
+        range.period.since.valueOf() === start.valueOf() &&
+        range.period.until.valueOf() === end.valueOf()
+      );
+    }) || {
+      alias: "custom",
+      title: "Custom",
+      period: {
+        since: start,
+        until: end,
+      },
+    };
+    setActiveDateRange(newDateRange);
+  }
+  function apply() {
+    setPopoverActive(false);
+    let orders_temp = [];
+    orders.forEach((order) => {
+      const orderDate = new Date(order.created_at);
+      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+        orders_temp.push(order);
+      }
+    });
+    setFilteredOrders(orders_temp);
+  }
+  function cancel() {
+    setPopoverActive(false);
+  }
 
-  const handleCodeChange = useCallback((value) => setCode(value), []);
+  useEffect(() => {
+    if (activeDateRange) {
+      setInputValues({
+        since: formatDate(activeDateRange.period.since),
+        until: formatDate(activeDateRange.period.until),
+      });
+      function monthDiff(referenceDate, newDate) {
+        return (
+          newDate.month -
+          referenceDate.month +
+          12 * (referenceDate.year - newDate.year)
+        );
+      }
+      const monthDifference = monthDiff(
+        { year, month },
+        {
+          year: activeDateRange.period.until.getFullYear(),
+          month: activeDateRange.period.until.getMonth(),
+        }
+      );
+      if (monthDifference > 1 || monthDifference < 0) {
+        setDate({
+          month: activeDateRange.period.until.getMonth(),
+          year: activeDateRange.period.until.getFullYear(),
+        });
+      }
+    }
+  }, [activeDateRange]);
+  const buttonValue =
+    activeDateRange.title === "Custom"
+      ? activeDateRange.period.since.toDateString() +
+        " - " +
+        activeDateRange.period.until.toDateString()
+      : activeDateRange.title;
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      await fetch("https://staging.api.creuch.fr/api/get_orders", {
-        method: "POST",
-        headers: { "Content-type": "application/json" },
-      })
-        .then((response) => response.json())
-        .then((orders) => {
-          console.log("orders", orders);
-          setOrders(orders);
-          setFilteredOrders(orders);
-          setIsLoading(false);
-        })
-        .catch((err) => {
-          console.log(err.message);
+      try {
+        const [ordersResponse, entreprisesResponse] = await Promise.all([
+          fetch("https://staging.api.creuch.fr/api/get_orders", {
+            method: "POST",
+            headers: {
+              "Content-type": "application/json"
+            },
+          }),
+          fetch("https://staging.api.creuch.fr/api/entreprises", {
+            method: "GET",
+            headers: {
+              "Content-type": "application/json",
+            },
+          }),
+        ]);
+
+        const [ordersData, entreprisesData] = await Promise.all([
+          ordersResponse.json(),
+          entreprisesResponse.json(),
+        ]);
+
+        console.log("Orders", ordersData);
+        console.log("Entreprises", entreprisesData);
+
+        setOrders(ordersData);
+        setEntreprises(entreprisesData);
+        let orders_temp = [];
+        ordersData.forEach((orderData) => {
+          const orderDate = new Date(orderData.created_at);
+          if (
+            orderDate >= activeDateRange.period.since &&
+            orderDate < activeDateRange.period.until
+          ) {
+            orders_temp.push(orderData);
+          }
         });
-
-
-        await fetch("https://staging.api.creuch.fr/api/entreprises", {
-          method: "GET",
-          headers: { "Content-type": "application/json" },
-        })
-          .then((response) => response.json())
-          .then((datas) => {
-            console.log("orders", datas);
-            
-            for (let i = 0; i < datas.length; i++) {
-             // console.log("iiiiii", i)
-              let item = {
-                label : datas[i].cse_name.value,
-                value : datas[i].code_cse.value
-              }
-              options.push(item);
-            } 
-            console.log("options", options);
-            setCse(options);
-          })
-          .catch((err) => {
-            console.log(err.message);
-          });
-
+        setFilteredOrders(orders_temp);
+      } catch (error) {
+        console.error("Erreur lors du chargement des données :", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchData();
@@ -773,54 +1127,180 @@ export default function OrdersPage() {
   return (
     <Page
       fullWidth
-      backAction={{ content: "Tableau de bord", url: "/dashboard" }}
+      backAction={{ content: "Tableau de bord", url: "/" }}
       title="Commandes"
-      titleMetadata={<Badge status="success">{orders.length} Commandes</Badge>}
+      titleMetadata={
+        <Badge status="success">{filteredOrders.length} Commandes</Badge>
+      }
       subtitle="Gérez les commandes de votre CSE"
       compactTitle
-      secondaryActions={[
-        {
-          content: (
-            <div style={{ display: "inline-flex", alignItems: "center" }}>
-              <div style={{ marginRight: "10px" }}>
-              <Select
-                  label="Filtrer par CSE"
-                  options={cse}
-                  onChange={handleSelectChange}
-                  value={select}
-                />
-              </div>
-            </div>
-          ),
-        },
-      ]}
+      primaryAction={{
+        content: (
+          <div style={{ display: "flex" }}>
+            <Icon source={ExportMinor} color="base" /> Exporter
+          </div>
+        ),
+        onAction: exportToExcel,
+      }}
     >
       <div>
         <Modal open={isLoading} loading small></Modal>
+        <style>
+          {`
+            .Polaris-Modal-CloseButton { 
+              display: none;
+            }
+            .Polaris-Modal-Dialog__Modal.Polaris-Modal-Dialog--sizeSmall {
+              max-width: 5rem;
+            }
+            .Polaris-HorizontalStack {
+              --pc-horizontal-stack-gap-xs: var(--p-space-0) !important;
+            }
+          `}
+        </style>
       </div>
       <Layout>
         <Layout.Section>
           <Grid>
-            <Grid.Cell columnSpan={{ xs: 5, sm: 5, md: 5, lg: 11, xl: 11 }}>
-              <Pagination
-                onPrevious={() => handlePageChange(currentPage - 1)}
-                onNext={() => handlePageChange(currentPage + 1)}
-                type="table"
-                hasNext={end < filteredOrders.length}
-                hasPrevious={currentPage > 1}
-                label={`${start}-${end} sur ${filteredOrders.length} commandes`}
-              />
-            </Grid.Cell>
-            <Grid.Cell columnSpan={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 1 }}>
-              <Tooltip content="Exporter le tableau">
-                <Button onClick={exportToExcel} size="medium" primary>
-                  <Icon source={ExportMinor} color="base" /> Exporter
-                </Button>
-              </Tooltip>
+            <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}>
+              <Popover
+                active={popoverActive}
+                autofocusTarget="none"
+                preferredAlignment="left"
+                preferredPosition="below"
+                fluidContent
+                sectioned={false}
+                fullHeight
+                activator={
+                  <Button
+                    size="slim"
+                    icon={CalendarMinor}
+                    onClick={() => setPopoverActive(!popoverActive)}
+                  >
+                    {buttonValue}
+                  </Button>
+                }
+                onClose={() => setPopoverActive(false)}
+              >
+                <Popover.Pane fixed>
+                  <HorizontalGrid
+                    columns={{
+                      xs: "1fr",
+                      mdDown: "1fr",
+                      md: "max-content max-content",
+                    }}
+                    gap={0}
+                    // ref={datePickerRef}
+                  >
+                    <Box
+                      maxWidth={mdDown ? "516px" : "212px"}
+                      width={mdDown ? "100%" : "212px"}
+                      padding={{ xs: 500, md: 0 }}
+                      paddingBlockEnd={{ xs: 100, md: 0 }}
+                    >
+                      {mdDown ? (
+                        <Select
+                          label="dateRangeLabel"
+                          labelHidden
+                          onChange={(value) => {
+                            const result = ranges.find(
+                              ({ title, alias }) =>
+                                title === value || alias === value
+                            );
+                            setActiveDateRange(result);
+                          }}
+                          value={
+                            activeDateRange?.title ||
+                            activeDateRange?.alias ||
+                            ""
+                          }
+                          options={ranges.map(
+                            ({ alias, title }) => title || alias
+                          )}
+                        />
+                      ) : (
+                        <Scrollable style={{ height: "334px" }}>
+                          <OptionList
+                            options={ranges.map((range) => ({
+                              value: range.alias,
+                              label: range.title,
+                            }))}
+                            selected={activeDateRange.alias}
+                            onChange={(value) => {
+                              setActiveDateRange(
+                                ranges.find((range) => range.alias === value[0])
+                              );
+                            }}
+                          />
+                        </Scrollable>
+                      )}
+                    </Box>
+                    <Box
+                      padding={{ xs: 500 }}
+                      maxWidth={mdDown ? "320px" : "516px"}
+                    >
+                      <VerticalStack gap="400">
+                        <HorizontalStack gap="200">
+                          <div style={{ flexGrow: 1 }}>
+                            <TextField
+                              role="combobox"
+                              label={"Since"}
+                              labelHidden
+                              prefix={<Icon source={CalendarMinor} />}
+                              value={inputValues.since}
+                              onChange={handleStartInputValueChange}
+                              onBlur={handleInputBlur}
+                              autoComplete="off"
+                            />
+                          </div>
+                          <Icon source={ArrowRightMinor} />
+                          <div style={{ flexGrow: 1 }}>
+                            <TextField
+                              role="combobox"
+                              label={"Until"}
+                              labelHidden
+                              prefix={<Icon source={CalendarMinor} />}
+                              value={inputValues.until}
+                              onChange={handleEndInputValueChange}
+                              onBlur={handleInputBlur}
+                              autoComplete="off"
+                            />
+                          </div>
+                        </HorizontalStack>
+                        <div>
+                          <DatePicker
+                            month={month}
+                            year={year}
+                            selected={{
+                              start: activeDateRange.period.since,
+                              end: activeDateRange.period.until,
+                            }}
+                            onMonthChange={handleMonthChange}
+                            onChange={handleCalendarChange}
+                            multiMonth
+                            allowRange
+                          />
+                        </div>
+                      </VerticalStack>
+                    </Box>
+                  </HorizontalGrid>
+                </Popover.Pane>
+                <Popover.Pane fixed>
+                  <Popover.Section>
+                    <HorizontalStack align="end">
+                      <div style={{ marginRight: "10px" }}>
+                        <Button onClick={cancel}>Annuler</Button>
+                      </div>
+                      <Button primary onClick={apply}>
+                        Appliquer
+                      </Button>
+                    </HorizontalStack>
+                  </Popover.Section>
+                </Popover.Pane>
+              </Popover>
             </Grid.Cell>
           </Grid>
         </Layout.Section>
-        <br />
         <Layout.Section>
           <LegacyCard>
             <IndexFilters
@@ -850,7 +1330,7 @@ export default function OrdersPage() {
             />
             <IndexTable
               resourceName={resourceName}
-              itemCount={paginatedData.length}
+              itemCount={filteredOrders.length}
               selectedItemsCount={
                 allResourcesSelected ? "All" : selectedResources.length
               }

@@ -21,13 +21,6 @@ import { Redirect } from "@shopify/app-bridge/actions";
 export default function ClientDetail() {
   const app = useAppBridge();
   const redirect = Redirect.create(app);
-  const user = localStorage.getItem("user");
-  if (!user) {
-    redirect.dispatch(Redirect.Action.APP, "/");
-    return null;
-  }
-  const user_data = JSON.parse(user);
-  const user_cse = user_data.code_cse?.value;
 
   const { handle } = useParams();
   const [retrait, setRetrait] = useState({});
@@ -80,16 +73,6 @@ export default function ClientDetail() {
     fetchData();
   }, [handle]);
 
-  // if (isLoading) {
-  //   return (
-  //     <div style={{ height: "100px" }}>
-  //       <Frame>
-  //         <Loading />
-  //       </Frame>
-  //     </div>
-  //   );
-  // }
-
   return (
     <Frame>
       <Page
@@ -98,33 +81,22 @@ export default function ClientDetail() {
         title={`${retrait.name}`}
         subtitle={`${retrait.address1}, ${retrait.country_name}`}
         compactTitle
-        secondaryActions={[
-          {
-            content: (
-              <div style={{ display: "inline-flex", alignItems: "center" }}>
-                <div style={{ marginRight: "10px" }}>
-                  <Text as="p" fontWeight="bold" alignment="end">
-                    {user_data.cse_name?.value} <br />
-                    {user_data.code_cse?.value}
-                  </Text>
-                </div>
-                <Thumbnail
-                  source={
-                    user_data.image.value ? user_data.image.value : ImageMajor
-                  }
-                  alt={`${user_data.cse_name.value}, ${user_data.company.value}`}
-                  size="small"
-                />
-              </div>
-            ),
-            onAction: () => {
-              redirect.dispatch(Redirect.Action.APP, "/profile");
-            },
-          },
-        ]}
       >
         <div>
           <Modal open={isLoading} loading small></Modal>
+          <style>
+            {`
+            .Polaris-Modal-CloseButton { 
+              display: none;
+            }
+            .Polaris-Modal-Dialog__Modal.Polaris-Modal-Dialog--sizeSmall {
+              max-width: 5rem;
+            }
+            .Polaris-HorizontalStack {
+              --pc-horizontal-stack-gap-xs: var(--p-space-0) !important;
+            }
+          `}
+          </style>
         </div>
         <Grid>
           <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 12, xl: 12 }}>

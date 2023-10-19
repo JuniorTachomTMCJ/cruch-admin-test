@@ -6,7 +6,6 @@ import {
   Page,
   Frame,
   Badge,
-  Select,
   Layout,
   Loading,
   LegacyCard,
@@ -16,13 +15,14 @@ import {
   IndexFilters,
   useSetIndexFiltersMode,
   ChoiceList,
-
+  Icon
 } from "@shopify/polaris";
+import { ImageMajor, ExportMinor } from "@shopify/polaris-icons";
 import { useState, useEffect, useCallback } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Redirect } from '@shopify/app-bridge/actions';
 import { utils, writeFileXLSX } from "xlsx";
-import { ImageMajor, ExportMinor } from "@shopify/polaris-icons";
+export { utils, writeFileXLSX };
 
 export default function HomePage() {
   const app = useAppBridge();
@@ -85,6 +85,22 @@ export default function HomePage() {
       </IndexTable.Cell>
     </IndexTable.Row>
   ));
+
+  const exportToExcel = async () => {
+    const tableau = filteredRetraits.map((retrait, index) => {
+      return {
+        Nom: retrait.name,
+        Adresse: retrait.address.address1,
+        Ville: retrait.address.city,
+        Pays: retrait.address.country,
+        Statut: retrait.isActive ? "Actif" : "Inactif",
+      };
+    });
+    const wb = utils.book_new();
+    const ws = utils.json_to_sheet(tableau);
+    utils.book_append_sheet(wb, ws, "Sheet1");
+    writeFileXLSX(wb, "Retraits.xlsx");
+  };
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const [itemStrings, setItemStrings] = useState(["Toutes"]);
@@ -431,40 +447,37 @@ export default function HomePage() {
   return (
     <Page
       fullWidth
-      backAction={{ content: "Tableau de bord", url: "/dashboard" }}
+      backAction={{ content: "Tableau de bord", url: "/" }}
       title="Points de retrait/TOTEMS"
       titleMetadata={
         <Badge status="success">{retraits.length} Points de retrait</Badge>
       }
       subtitle="Gérez les points de retrait/TOTEM"
       compactTitle
-      /*       secondaryActions={[
-        {
-          content: (
-            <div style={{ display: "inline-flex", alignItems: "center" }}>
-              <div style={{ marginRight: "10px" }}>
-                <Text as="p" fontWeight="bold" alignment="end">
-                  {user_data.cse_name?.value} <br />
-                  {user_data.code_cse?.value}
-                </Text>
-              </div>
-              <Thumbnail
-                source={
-                  user_data.image.value ? user_data.image.value : ImageMajor
-                }
-                alt={`${user_data.cse_name.value}, ${user_data.company.value}`}
-                size="small"
-              />
-            </div>
-          ),
-          onAction: () => {
-            redirect.dispatch(Redirect.Action.APP, "/profile");
-          },
-        },
-      ]} */
+      primaryAction={{
+        content: (
+          <div style={{ display: "flex" }}>
+            <Icon source={ExportMinor} color="base" /> Exporter
+          </div>
+        ),
+        onAction: exportToExcel,
+      }}
     >
       <div>
         <Modal open={isLoading} loading small></Modal>
+        <style>
+          {`
+            .Polaris-Modal-CloseButton { 
+              display: none;
+            }
+            .Polaris-Modal-Dialog__Modal.Polaris-Modal-Dialog--sizeSmall {
+              max-width: 5rem;
+            }
+            .Polaris-HorizontalStack {
+              --pc-horizontal-stack-gap-xs: var(--p-space-0) !important;
+            }
+          `}
+        </style>
       </div>
       <Layout>
         <Layout.Section>

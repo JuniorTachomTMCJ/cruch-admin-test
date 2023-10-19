@@ -43,14 +43,12 @@ import {
   ExportMinor,
 } from "@shopify/polaris-icons";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import { Redirect } from "@shopify/app-bridge/actions";
 import "@shopify/polaris-viz/build/esm/styles.css";
 import { utils, writeFileXLSX } from "xlsx";
 export { utils, writeFileXLSX };
 
 export default function LoginPage() {
   const app = useAppBridge();
-  const redirect = Redirect.create(app);
 
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -61,7 +59,8 @@ export default function LoginPage() {
     "total_reductions_price": 0,
     "total_reductions_count": 0,
     "total_reductions_use_price": 0,
-    "count_reductions_use": 0
+    "count_reductions_use": 0,
+    "count_salarie_register": 0
   });
   const [collections, setCollections] = useState([]);
   const [entreprises, setEntreprises] = useState([]);
@@ -253,7 +252,8 @@ export default function LoginPage() {
       collections,
       entreprises,
       orders,
-      reductions
+      reductions,
+      customers
     );
     setStats(stats);
   }
@@ -338,7 +338,7 @@ export default function LoginPage() {
         //   );
         // }
 
-        if (collections.length >= 1 && orders.length >= 1 && reductions.length >= 1) {
+        if (collections.length >= 1 && orders.length >= 1 && reductions.length >= 1 && customers.length >= 1) {
           const stats = getAllStatistics(
             selectedCollections,
             selectedEntreprises,
@@ -347,7 +347,8 @@ export default function LoginPage() {
             collections,
             entreprises,
             orders,
-            reductions
+            reductions,
+            customers
           );
           setStats(stats);
         }
@@ -372,7 +373,8 @@ export default function LoginPage() {
     collections = [],
     entreprises = [],
     orders = [],
-    reductions = []
+    reductions = [],
+    customers = []
   ) {
     const datas = {};
     let total_reductions = 0;
@@ -382,18 +384,23 @@ export default function LoginPage() {
     let total_reductions_price = 0;
     let total_reductions_use_price = 0;
     let count_reductions_use = 0;
+    let count_salarie_register = 0;
 
     // const dateRange = getDateRange(startDate, endDate);
     // dateRange.forEach((date) => {
     //   datas[date.toISOString().slice(0, 10)] = 0;
     // });
 
+    // Graphe Calcule
     if (entreprisesIds.length === 0) {
       entreprises.forEach((entreprise) => {
         if (collectionsIds.length === 0) {
           collections.forEach((collection) => {
             orders.forEach((order) => {
               const orderDate = new Date(order.created_at);
+              const metafield = order.metafields.find(
+                (metafield) => metafield.key === "deleted"
+              );
               order.line_items.forEach((product) => {
                 let productsIds = collection.products.map(
                   (produit) => produit.id.match(/\/(\d+)$/)[1]
@@ -402,8 +409,9 @@ export default function LoginPage() {
                   productsIds.includes(String(product.product_id)) &&
                   orderDate >= startDate &&
                   orderDate < endDate &&
-                  order.client.entreprise.code_cse.value ==
-                    entreprise.code_cse.value
+                  order.client.entreprise?.code_cse.value ==
+                    entreprise.code_cse.value &&
+                  metafield.value == false
                 ) {
                   const formattedDate = orderDate.toISOString().slice(0, 10);
                   if (!datas[formattedDate]) {
@@ -423,6 +431,9 @@ export default function LoginPage() {
             if (collection) {
               orders.forEach((order) => {
                 const orderDate = new Date(order.created_at);
+                const metafield = order.metafields.find(
+                  (metafield) => metafield.key === "deleted"
+                );
                 order.line_items.forEach((product) => {
                   let productsIds = collection.products.map(
                     (produit) => produit.id.match(/\/(\d+)$/)[1]
@@ -431,8 +442,9 @@ export default function LoginPage() {
                     productsIds.includes(String(product.product_id)) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise.code_cse.value ==
-                      entreprise.code_cse.value
+                    order.client.entreprise?.code_cse.value ==
+                      entreprise.code_cse.value &&
+                    metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
                     if (!datas[formattedDate]) {
@@ -447,14 +459,17 @@ export default function LoginPage() {
               const productId = collectionId;
               orders.forEach((order) => {
                 const orderDate = new Date(order.created_at);
+                const metafield = order.metafields.find(
+                  (metafield) => metafield.key === "deleted"
+                );
                 order.line_items.forEach((product) => {
                   if (
-                    String(productId.match(/\/(\d+)$/)[1]) ==
-                      String(product.product_id) &&
+                    String(productId.match(/\/(\d+)$/)[1]) == String(product.product_id) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise.code_cse.value ==
-                      entreprise.code_cse.value
+                    order.client.entreprise?.code_cse.value ==
+                      entreprise.code_cse.value &&
+                    metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
                     if (!datas[formattedDate]) {
@@ -479,6 +494,9 @@ export default function LoginPage() {
           collections.forEach((collection) => {
             orders.forEach((order) => {
               const orderDate = new Date(order.created_at);
+              const metafield = order.metafields.find(
+                (metafield) => metafield.key === "deleted"
+              );
               order.line_items.forEach((product) => {
                 let productsIds = collection.products.map(
                   (produit) => produit.id.match(/\/(\d+)$/)[1]
@@ -487,8 +505,9 @@ export default function LoginPage() {
                   productsIds.includes(String(product.product_id)) &&
                   orderDate >= startDate &&
                   orderDate < endDate &&
-                  order.client.entreprise.code_cse.value ==
-                    entreprise.code_cse.value
+                  order.client.entreprise?.code_cse.value ==
+                    entreprise.code_cse.value &&
+                  metafield.value == false
                 ) {
                   const formattedDate = orderDate.toISOString().slice(0, 10);
                   if (!datas[formattedDate]) {
@@ -508,6 +527,9 @@ export default function LoginPage() {
             if (collection) {
               orders.forEach((order) => {
                 const orderDate = new Date(order.created_at);
+                const metafield = order.metafields.find(
+                  (metafield) => metafield.key === "deleted"
+                );
                 order.line_items.forEach((product) => {
                   let productsIds = collection.products.map(
                     (produit) => produit.id.match(/\/(\d+)$/)[1]
@@ -516,8 +538,9 @@ export default function LoginPage() {
                     productsIds.includes(String(product.product_id)) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise.code_cse.value ==
-                      entreprise.code_cse.value
+                    order.client.entreprise?.code_cse.value ==
+                      entreprise.code_cse.value &&
+                    metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
                     if (!datas[formattedDate]) {
@@ -532,14 +555,18 @@ export default function LoginPage() {
               const productId = collectionId;
               orders.forEach((order) => {
                 const orderDate = new Date(order.created_at);
+                const metafield = order.metafields.find(
+                  (metafield) => metafield.key === "deleted"
+                );
                 order.line_items.forEach((product) => {
                   if (
                     String(productId.match(/\/(\d+)$/)[1]) ==
                       String(product.product_id) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise.code_cse.value ==
-                      entreprise.code_cse.value
+                    order.client.entreprise?.code_cse.value ==
+                      entreprise.code_cse.value &&
+                    metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
                     if (!datas[formattedDate]) {
@@ -556,68 +583,90 @@ export default function LoginPage() {
       });
     }
 
-    if (entreprisesIds.length === 0) {
-      entreprises.forEach((entreprise) => {
-        orders.forEach((order) => {
-          const orderDate = new Date(order.created_at);
-          if (
-            order.financial_status === "paid" &&
-            orderDate >= startDate &&
-            orderDate < endDate &&
-            order.client.entreprise.code_cse.value == entreprise.code_cse.value
-          ) {
-            total_orders_count++;
-            order.transactions.forEach((transaction) => {
-              if (
-                transaction.gateway == "gift_card" &&
-                transaction.status == "success"
-              ) {
-                total_reductions += parseFloat(transaction.amount);
-              }
-            });
-            total_sales += parseFloat(order.total_price);
-          }
-        });
-      });
-    } else {
-      entreprisesIds.forEach((entrepriseId) => {
-        const entreprise = entreprises.find(
-          (entreprise) => entreprise.code_cse.value === entrepriseId
-        );
-
-        orders.forEach((order) => {
-          const orderDate = new Date(order.created_at);
-          if (
-            order.financial_status === "paid" &&
-            orderDate >= startDate &&
-            orderDate < endDate &&
-            order.client.entreprise.code_cse.value == entreprise.code_cse.value
-          ) {
-            total_orders_count++;
-            order.transactions.forEach((transaction) => {
-              if (
-                transaction.gateway == "gift_card" &&
-                transaction.status == "success"
-              ) {
-                total_reductions += parseFloat(transaction.amount);
-              }
-            });
-            total_sales += parseFloat(order.total_price);
-          }
-        });
-      });
-    }
-
-    const transformedData = Object.keys(datas).map((date, index) => ({
-      key: date,
-      value: datas[date],
-    }));
-
+    const transformedData = Object.keys(datas).map((date, index) => ({key: date, value: datas[date]}));
     transformedData.sort((a, b) => new Date(a.key) - new Date(b.key));
+
+    // Commandes stat global
+    if (entreprisesIds.length === 0) {
+      entreprises.forEach((entreprise) => {
+        orders.forEach((order) => {
+          const orderDate = new Date(order.created_at);
+          const metafield = order.metafields.find(
+            (metafield) => metafield.key === "deleted"
+          );
+          if (
+            order.financial_status === "paid" &&
+            orderDate >= startDate &&
+            orderDate < endDate &&
+            order.client.entreprise?.code_cse.value == entreprise.code_cse.value &&
+            metafield.value == false
+          ) {
+            total_orders_count++;
+            order.transactions.forEach((transaction) => {
+              if (transaction.gateway == "gift_card" && transaction.status == "success") {
+                total_reductions += parseFloat(transaction.amount);
+              }
+            });
+            total_sales += parseFloat(order.total_price);
+          }
+        });
+
+        customers.forEach((customer) => {
+          const customerDate = new Date(customer.createdAt);
+          const metafield = customer.metafields.find((metafield) => metafield.key === "code_cse");
+          if (customerDate >= startDate && customerDate < endDate && metafield.value == entreprise.code_cse.value) {
+            count_salarie_register++;
+          }
+        });
+      });
+    } else {
+      entreprisesIds.forEach((entrepriseId) => {
+        const entreprise = entreprises.find(
+          (entreprise) => entreprise.code_cse.value === entrepriseId
+        );
+
+        orders.forEach((order) => {
+          const orderDate = new Date(order.created_at);
+          const metafield = order.metafields.find(
+            (metafield) => metafield.key === "deleted"
+          );
+          if (
+            order.financial_status === "paid" &&
+            orderDate >= startDate &&
+            orderDate < endDate &&
+            order.client.entreprise?.code_cse.value == entreprise.code_cse.value &&
+            metafield.value == false
+          ) {
+            total_orders_count++;
+            order.transactions.forEach((transaction) => {
+              if (
+                transaction.gateway == "gift_card" &&
+                transaction.status == "success"
+              ) {
+                total_reductions += parseFloat(transaction.amount);
+              }
+            });
+            total_sales += parseFloat(order.total_price);
+          }
+        });
+
+        customers.forEach((customer) => {
+          const customerDate = new Date(customer.createdAt);
+          const metafield = customer.metafields.find((metafield) => metafield.key === "code_cse");
+          if (customerDate >= startDate && customerDate < endDate && metafield.value == entreprise.code_cse.value) {
+            count_salarie_register++;
+          }
+        });
+      });
+    }
 
     reductions.forEach((reduction) => {
       const reductionDate = new Date(reduction.created_at);
-      if (reductionDate >= startDate && reductionDate < endDate) {
+      if (
+        reductionDate >= startDate &&
+        reductionDate < endDate &&
+        reduction.disabled_at == null
+      ) {
         total_reductions_price += parseFloat(reduction.initial_value);
         total_reductions_use_price += parseFloat(
           reduction.initial_value - reduction.balance
@@ -640,6 +689,7 @@ export default function LoginPage() {
         total_reductions_use_price
       ).toFixed(2),
       count_reductions_use: count_reductions_use,
+      count_salarie_register: count_salarie_register,
     };
   }
 
@@ -695,7 +745,8 @@ export default function LoginPage() {
           collections,
           entreprises,
           orders,
-          reductions
+          reductions,
+          customers
         );
         setStats(stats);
       } catch (error) {
@@ -709,16 +760,25 @@ export default function LoginPage() {
     };
 
     fetchData();
-  }, [selectedCollections, selectedEntreprises, activeDateRange, collections, entreprises, orders, reductions]);
+  }, [
+    selectedCollections,
+    selectedEntreprises,
+    activeDateRange,
+    collections,
+    entreprises,
+    orders,
+    reductions,
+    customers,
+  ]);
 
   const renderSubcategories = (parentId) => {
     const parentCollection = collections.find(
       (collection) => collection.id === parentId
     );
 
-    if (
-      parentCollection.sub_collections.length === 0 &&
-      parentCollection.products.length === 0
+    if (parentCollection == undefined ||
+      (parentCollection.sub_collections.length === 0 &&
+      parentCollection.products.length === 0)
     ) {
       return null;
     }
@@ -805,7 +865,7 @@ export default function LoginPage() {
           stats.total_reductions_use_price + " €",
         "Total des abondements utilisés": stats.count_reductions_use,
         Offres: collections.length,
-        Employés: customers.length,
+        "Nombre d'inscrits": stats.count_salarie_register,
         "Points de retraits": locations.length,
       },
     ];
@@ -1046,7 +1106,7 @@ export default function LoginPage() {
                   <Divider borderColor="border" />
                   <Text as="h1">Offres : {collections.length} </Text>
                   <Divider borderColor="border" />
-                  <Text as="h1">Nombre d'inscrits : {customers.length} </Text>
+                  <Text as="h1">Nombre d'inscrits : {stats.count_salarie_register} </Text>
                   <Divider borderColor="border" />
                   <Text as="h1">Points de retraits : {locations.length} </Text>
                 </VerticalStack>

@@ -35,9 +35,6 @@ import { useAuthenticatedFetch } from "../../hooks";
 
 export default function OffreDetail() {
   const redirect = Redirect.create(useAppBridge());
-  const user = localStorage.getItem("user");
-
-  //const user_data = JSON.parse(user);
   const user_cse = "INAN0023";
 
   const fetchQuery = useAuthenticatedFetch();
@@ -266,6 +263,32 @@ export default function OffreDetail() {
         });
     });
   }, [selectedSubCollectionsAll, handle]);
+
+  const handleRemoveSubCollection = useCallback(async (value) => {
+    setIsLoading(true);
+    await fetch(
+      `https://staging.api.creuch.fr/api/remove_sub_collection_to_collection`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          sub_collection_id: value,
+        }),
+        headers: {
+          "Content-type": "application/json",
+        },
+      }
+    )
+      .then((response) => response.json())
+      .then(() => {
+        fetchData();
+        setMessage("Sous collection retiré du collection avec succès");
+        toggleActiveOne();
+      })
+      .catch((error) => {
+        setMessage("Erreur d'ajout de sous collection à la collection.");
+        toggleActiveOne();
+      });
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -509,7 +532,7 @@ export default function OffreDetail() {
   const filterControl = (
     <LegacyFilters
       queryValue={queryValue}
-      queryPlaceholder="Recherchez produit ..."
+      queryPlaceholder="Recherchez dans les produits ..."
       filters={[]}
       appliedFilters={[]}
       onQueryChange={handleQueryValueChange}
@@ -525,7 +548,7 @@ export default function OffreDetail() {
   const filterControlSub = (
     <LegacyFilters
       queryValue={queryValueSub}
-      queryPlaceholder="Recherchez sous catégorie ..."
+      queryPlaceholder="Recherchez dans les sous catégories ..."
       filters={[]}
       appliedFilters={[]}
       onQueryChange={handleQueryValueSubChange}
@@ -594,6 +617,19 @@ export default function OffreDetail() {
       >
         <div>
           <Modal open={isLoading} loading small></Modal>
+          <style>
+            {`
+            .Polaris-Modal-CloseButton { 
+              display: none;
+            }
+            .Polaris-Modal-Dialog__Modal.Polaris-Modal-Dialog--sizeSmall {
+              max-width: 5rem;
+            }
+            .Polaris-HorizontalStack {
+              --pc-horizontal-stack-gap-xs: var(--p-space-0) !important;
+            }
+          `}
+          </style>
         </div>
         <div>
           <Modal
@@ -953,6 +989,8 @@ export default function OffreDetail() {
                         },
                         {
                           content: <Text color="critical">Retirer</Text>,
+                          onAction: () =>
+                            handleRemoveSubCollection(id.match(/\/(\d+)$/)[1]),
                         },
                       ]}
                       persistActions
