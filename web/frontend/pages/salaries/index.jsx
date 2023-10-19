@@ -10,6 +10,7 @@ import {
   TextField,
   LegacyCard,
   Form,
+  Select,
   Grid,
   FormLayout,
   IndexTable,
@@ -450,6 +451,30 @@ export default function ClientsPage() {
     handleCseRemove();
   }, [handleQueryValueRemove, handleCseRemove]);
 
+  const handleSelectChange = useCallback(
+    async (value) => {
+        console.log("valeur ici: ", value);
+        setIsLoading(true);
+        await fetch("https://staging.api.creuch.fr/api/get_customers_by_cse", {
+          method: "POST",
+          body: JSON.stringify({ code_cse: value }),
+          headers: { "Content-type": "application/json" },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("orders", data);
+            setCustomers(data);
+            setFilteredCustomers(data);
+            setIsLoading(false);
+          })
+          .catch((err) => {
+            console.log(err.message);
+          });
+      }
+    );
+
+
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -507,6 +532,20 @@ export default function ClientsPage() {
         {
           content: "Mettre à jour la base salariale",
           onAction: addOfferModal,
+        },
+        {
+          content: (
+            <div style={{ display: "inline-flex", alignItems: "center" }}>
+              <div style={{ marginRight: "10px" }}>
+              <Select
+                  label="Filtrer par CSE"
+                  options={cse}
+                  onChange={handleSelectChange}
+                  value={select}
+                />
+              </div>
+            </div>
+          ),
         },
       ]}
     >
