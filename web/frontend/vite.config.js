@@ -47,7 +47,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
-      external: ['xlsx', '@shopify/polaris-viz'],
+      external: ['xlsx', '@shopify/polaris-viz', '@shopify/polaris-viz/build/esm/styles.css'],
 /*       output: {
         globals: {
           vue: 'Vue'
