@@ -45,16 +45,6 @@ if (host === "localhost") {
 export default defineConfig({
   root: dirname(fileURLToPath(import.meta.url)),
   plugins: [react()],
-  build: {
-    rollupOptions: {
-      external: ['xlsx', '@shopify/polaris-viz', '@shopify/polaris-viz/build/esm/styles.css', 'countries-list'],
-/*       output: {
-        globals: {
-          vue: 'Vue'
-        }
-      } */
-    }
-  },
   define: {
     "process.env.SHOPIFY_API_KEY": JSON.stringify(process.env.SHOPIFY_API_KEY),
   },
