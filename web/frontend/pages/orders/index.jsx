@@ -62,13 +62,16 @@ export default function OrdersPage() {
   const yesterday = new Date(
     new Date(new Date().setDate(today.getDate() - 1)).setHours(0, 0, 0, 0)
   );
+  function setEndOfDay(date) {
+    return new Date(new Date(date).setHours(23, 59, 59, 999));
+  }
   const ranges = [
     {
       title: "Aujourd'hui",
       alias: "today",
       period: {
         since: today,
-        until: today,
+        until: setEndOfDay(today),
       },
     },
     {
@@ -76,7 +79,7 @@ export default function OrdersPage() {
       alias: "yesterday",
       period: {
         since: yesterday,
-        until: yesterday,
+        until: setEndOfDay(yesterday),
       },
     },
     {
@@ -86,7 +89,7 @@ export default function OrdersPage() {
         since: new Date(
           new Date(new Date().setDate(today.getDate() - 7)).setHours(0, 0, 0, 0)
         ),
-        until: yesterday,
+        until: setEndOfDay(yesterday),
       },
     },
     {
@@ -94,7 +97,7 @@ export default function OrdersPage() {
       alias: "this_month",
       period: {
         since: new Date(today.getFullYear(), today.getMonth(), 1),
-        until: today,
+        until: setEndOfDay(today),
       },
     },
     {
@@ -102,7 +105,7 @@ export default function OrdersPage() {
       alias: "this_year",
       period: {
         since: new Date(today.getFullYear(), 0, 1),
-        until: today,
+        until: setEndOfDay(today),
       },
     },
   ];
@@ -986,8 +989,8 @@ export default function OrdersPage() {
       setActiveDateRange((prevState) => {
         const newPeriod =
           prevState.period && newUntil >= prevState.period.since
-            ? { since: prevState.period.since, until: newUntil }
-            : { since: newUntil, until: newUntil };
+            ? { since: prevState.period.since, until: setEndOfDay(newUntil) }
+            : { since: newUntil, until: setEndOfDay(newUntil) };
         return {
           ...prevState,
           period: newPeriod,
@@ -1019,7 +1022,7 @@ export default function OrdersPage() {
       title: "Custom",
       period: {
         since: start,
-        until: end,
+        until: setEndOfDay(end),
       },
     };
     setActiveDateRange(newDateRange);

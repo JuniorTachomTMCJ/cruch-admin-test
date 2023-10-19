@@ -2,7 +2,11 @@
 
 name = "Admin Creuch"
 client_id = "09be7311801190a8dfa85501d6178bef"
+<<<<<<< HEAD
 application_url = "https://wrestling-graph-consequence-sitemap.trycloudflare.com"
+=======
+application_url = "https://fuel-halo-wildlife-kodak.trycloudflare.com"
+>>>>>>> a9c8888cb52ced32117e18615b136855036222e0
 embedded = true
 
 [access_scopes]
@@ -11,9 +15,15 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
+<<<<<<< HEAD
   "https://wrestling-graph-consequence-sitemap.trycloudflare.com/auth/callback",
   "https://wrestling-graph-consequence-sitemap.trycloudflare.com/auth/shopify/callback",
   "https://wrestling-graph-consequence-sitemap.trycloudflare.com/api/auth/callback"
+=======
+  "https://fuel-halo-wildlife-kodak.trycloudflare.com/auth/callback",
+  "https://fuel-halo-wildlife-kodak.trycloudflare.com/auth/shopify/callback",
+  "https://fuel-halo-wildlife-kodak.trycloudflare.com/api/auth/callback"
+>>>>>>> a9c8888cb52ced32117e18615b136855036222e0
 ]
 
 [webhooks]
