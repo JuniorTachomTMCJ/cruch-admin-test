@@ -148,6 +148,41 @@ export default function OrderDetail() {
       });
   }, [handle]);
 
+  const handleRefundOrder = useCallback(async () => {
+    setIsLoading(true);
+    await fetch(`https://staging.api.creuch.fr/api/refund_order`, {
+      method: "POST",
+      body: JSON.stringify({
+        id: handle,
+        line_items: order.line_items,
+      }),
+      headers: {
+        "Content-type": "application/json",
+      },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data);
+        if (data.errors) {
+          data.errors.base.forEach((error) => {
+            setMessage(error);
+            toggleActiveOne();
+            setIsLoading(false);
+          })
+        } else {
+          setMessage("Commande remboursé.");
+          toggleActiveOne();
+          fetchData();
+        }
+      })
+      .catch((error) => {
+        console.error(error);
+        setMessage("Erreur de remboursement de commande.");
+        toggleActiveOne();
+        setIsLoading(false);
+      });
+  }, [handle, order])
+
   const toastMarkup1 = activeOne ? (
     <Toast content={message} onDismiss={toggleActiveOne} />
   ) : null;
@@ -324,9 +359,7 @@ export default function OrderDetail() {
               },
               {
                 content: <Text color="warning">Rembourser</Text>,
-                onAction: () => {
-                  processOrderItem(handle, "refund");
-                },
+                onAction: () => handleRefundOrder()
               },
             ],
           },
@@ -832,7 +865,8 @@ export default function OrderDetail() {
             columnSpan={{ xs: 6, sm: 6, md: 4, lg: 11, xl: 11 }}
           ></Grid.Cell>
           <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 2, lg: 1, xl: 1 }}>
-            {order.metafields.length >= 2 && order.metafields[1].value == false ? (
+            {order.metafields.length >= 2 &&
+            order.metafields[1].value == false ? (
               <button
                 className="Polaris-Button Polaris-Button--sizeSlim"
                 type="button"

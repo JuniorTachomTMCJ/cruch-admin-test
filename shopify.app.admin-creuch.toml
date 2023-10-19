@@ -2,7 +2,7 @@
 
 name = "Admin Creuch"
 client_id = "09be7311801190a8dfa85501d6178bef"
-application_url = "https://fuel-halo-wildlife-kodak.trycloudflare.com"
+application_url = "https://maiden-munich-europe-bet.trycloudflare.com"
 embedded = true
 
 [access_scopes]
@@ -11,9 +11,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://fuel-halo-wildlife-kodak.trycloudflare.com/auth/callback",
-  "https://fuel-halo-wildlife-kodak.trycloudflare.com/auth/shopify/callback",
-  "https://fuel-halo-wildlife-kodak.trycloudflare.com/api/auth/callback"
+  "https://maiden-munich-europe-bet.trycloudflare.com/auth/callback",
+  "https://maiden-munich-europe-bet.trycloudflare.com/auth/shopify/callback",
+  "https://maiden-munich-europe-bet.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
