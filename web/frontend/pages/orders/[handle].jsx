@@ -359,8 +359,9 @@ export default function OrderDetail() {
               },
               {
                 content: <Text color="warning">Rembourser</Text>,
-                onAction: () => handleRefundOrder()
-              },
+                onAction: () => handleRefundOrder(),
+                disabled: order.refunds?.length === 0 ? false : true,
+              }
             ],
           },
         ]}

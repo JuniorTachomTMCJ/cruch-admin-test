@@ -85,7 +85,7 @@ export default function LoginPage() {
       alias: "today",
       period: {
         since: today,
-        until: setEndOfDay(today),
+        until: today,
       },
     },
     {
@@ -93,7 +93,7 @@ export default function LoginPage() {
       alias: "yesterday",
       period: {
         since: yesterday,
-        until: setEndOfDay(yesterday),
+        until: yesterday,
       },
     },
     {
@@ -103,7 +103,7 @@ export default function LoginPage() {
         since: new Date(
           new Date(new Date().setDate(today.getDate() - 7)).setHours(0, 0, 0, 0)
         ),
-        until: setEndOfDay(yesterday),
+        until: yesterday,
       },
     },
     {
@@ -111,7 +111,7 @@ export default function LoginPage() {
       alias: "this_month",
       period: {
         since: new Date(today.getFullYear(), today.getMonth(), 1),
-        until: setEndOfDay(today),
+        until: today,
       },
     },
     {
@@ -119,7 +119,7 @@ export default function LoginPage() {
       alias: "this_year",
       period: {
         since: new Date(today.getFullYear(), 0, 1),
-        until: setEndOfDay(today),
+        until: today,
       },
     },
   ];
@@ -207,8 +207,8 @@ export default function LoginPage() {
       setActiveDateRange((prevState) => {
         const newPeriod =
           prevState.period && newUntil >= prevState.period.since
-            ? { since: prevState.period.since, until: setEndOfDay(newUntil) }
-            : { since: newUntil, until: setEndOfDay(newUntil) };
+            ? { since: prevState.period.since, until: newUntil }
+            : { since: newUntil, until: newUntil };
         return {
           ...prevState,
           period: newPeriod,
@@ -240,7 +240,7 @@ export default function LoginPage() {
       title: "Custom",
       period: {
         since: start,
-        until: setEndOfDay(end),
+        until: end,
       },
     };
     setActiveDateRange(newDateRange);
@@ -251,7 +251,7 @@ export default function LoginPage() {
       selectedCollections,
       selectedEntreprises,
       activeDateRange.period.since,
-      activeDateRange.period.until,
+      setEndOfDay(activeDateRange.period.until),
       collections,
       entreprises,
       orders,
@@ -774,7 +774,7 @@ export default function LoginPage() {
         selectedCollections,
         selectedEntreprises,
         activeDateRange.period.since,
-        activeDateRange.period.until,
+        setEndOfDay(activeDateRange.period.until),
         collections,
         entreprises,
         orders,
@@ -820,7 +820,7 @@ export default function LoginPage() {
           selectedCollections,
           selectedEntreprises,
           activeDateRange.period.since,
-          activeDateRange.period.until,
+          setEndOfDay(activeDateRange.period.until),
           collections,
           entreprises,
           orders,
@@ -989,7 +989,7 @@ export default function LoginPage() {
                             onMonthChange={handleMonthChange}
                             onChange={handleCalendarChange}
                             multiMonth
-                            allowRange
+                            allowRange={true}
                           />
                         </div>
                       </VerticalStack>

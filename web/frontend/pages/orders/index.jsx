@@ -71,7 +71,7 @@ export default function OrdersPage() {
       alias: "today",
       period: {
         since: today,
-        until: setEndOfDay(today),
+        until: today,
       },
     },
     {
@@ -79,7 +79,7 @@ export default function OrdersPage() {
       alias: "yesterday",
       period: {
         since: yesterday,
-        until: setEndOfDay(yesterday),
+        until: yesterday,
       },
     },
     {
@@ -89,7 +89,7 @@ export default function OrdersPage() {
         since: new Date(
           new Date(new Date().setDate(today.getDate() - 7)).setHours(0, 0, 0, 0)
         ),
-        until: setEndOfDay(yesterday),
+        until: yesterday,
       },
     },
     {
@@ -97,7 +97,7 @@ export default function OrdersPage() {
       alias: "this_month",
       period: {
         since: new Date(today.getFullYear(), today.getMonth(), 1),
-        until: setEndOfDay(today),
+        until: today,
       },
     },
     {
@@ -105,7 +105,7 @@ export default function OrdersPage() {
       alias: "this_year",
       period: {
         since: new Date(today.getFullYear(), 0, 1),
-        until: setEndOfDay(today),
+        until: today,
       },
     },
   ];
@@ -529,7 +529,10 @@ export default function OrdersPage() {
     let orders_temp = [];
     orders.forEach((order) => {
       const orderDate = new Date(order.created_at);
-      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+      if (
+        orderDate >= activeDateRange.period.since &&
+        orderDate < setEndOfDay(activeDateRange.period.until)
+      ) {
         orders_temp.push(order);
       }
     });
@@ -569,7 +572,10 @@ export default function OrdersPage() {
       let orders_temp = [];
       updatedFilteredOrders.forEach((order) => {
         const orderDate = new Date(order.created_at);
-        if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+        if (
+          orderDate >= activeDateRange.period.since &&
+          orderDate < setEndOfDay(activeDateRange.period.until)
+        ) {
           orders_temp.push(order);
         }
       });
@@ -590,7 +596,10 @@ export default function OrdersPage() {
       let orders_temp = [];
       updatedFilteredOrders.forEach((order) => {
         const orderDate = new Date(order.created_at);
-        if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+        if (
+          orderDate >= activeDateRange.period.since &&
+          orderDate < setEndOfDay(activeDateRange.period.until)
+        ) {
           orders_temp.push(order);
         }
       });
@@ -611,7 +620,10 @@ export default function OrdersPage() {
       let orders_temp = [];
       updatedFilteredOrders.forEach((order) => {
         const orderDate = new Date(order.created_at);
-        if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+        if (
+          orderDate >= activeDateRange.period.since &&
+          orderDate < setEndOfDay(activeDateRange.period.until)
+        ) {
           orders_temp.push(order);
         }
       });
@@ -673,7 +685,10 @@ export default function OrdersPage() {
     let orders_temp = [];
     updatedFilteredOrders.forEach((order) => {
       const orderDate = new Date(order.created_at);
-      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+      if (
+        orderDate >= activeDateRange.period.since &&
+        orderDate < setEndOfDay(activeDateRange.period.until)
+      ) {
         orders_temp.push(order);
       }
     });
@@ -694,7 +709,10 @@ export default function OrdersPage() {
     let orders_temp = [];
     updatedFilteredOrders.forEach((order) => {
       const orderDate = new Date(order.created_at);
-      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+      if (
+        orderDate >= activeDateRange.period.since &&
+        orderDate < setEndOfDay(activeDateRange.period.until)
+      ) {
         orders_temp.push(order);
       }
     });
@@ -715,7 +733,10 @@ export default function OrdersPage() {
     let orders_temp = [];
     updatedFilteredOrders.forEach((order) => {
       const orderDate = new Date(order.created_at);
-      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+      if (
+        orderDate >= activeDateRange.period.since &&
+        orderDate < setEndOfDay(activeDateRange.period.until)
+      ) {
         orders_temp.push(order);
       }
     });
@@ -727,7 +748,10 @@ export default function OrdersPage() {
     let orders_temp = [];
     orders.forEach((order) => {
       const orderDate = new Date(order.created_at);
-      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+      if (
+        orderDate >= activeDateRange.period.since &&
+        orderDate < setEndOfDay(activeDateRange.period.until)
+      ) {
         orders_temp.push(order);
       }
     });
@@ -739,7 +763,10 @@ export default function OrdersPage() {
     let orders_temp = [];
     orders.forEach((order) => {
       const orderDate = new Date(order.created_at);
-      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+      if (
+        orderDate >= activeDateRange.period.since &&
+        orderDate < setEndOfDay(activeDateRange.period.until)
+      ) {
         orders_temp.push(order);
       }
     });
@@ -989,8 +1016,8 @@ export default function OrdersPage() {
       setActiveDateRange((prevState) => {
         const newPeriod =
           prevState.period && newUntil >= prevState.period.since
-            ? { since: prevState.period.since, until: setEndOfDay(newUntil) }
-            : { since: newUntil, until: setEndOfDay(newUntil) };
+            ? { since: prevState.period.since, until: newUntil }
+            : { since: newUntil, until: newUntil };
         return {
           ...prevState,
           period: newPeriod,
@@ -1022,7 +1049,7 @@ export default function OrdersPage() {
       title: "Custom",
       period: {
         since: start,
-        until: setEndOfDay(end),
+        until: end,
       },
     };
     setActiveDateRange(newDateRange);
@@ -1032,7 +1059,10 @@ export default function OrdersPage() {
     let orders_temp = [];
     orders.forEach((order) => {
       const orderDate = new Date(order.created_at);
-      if (orderDate >= activeDateRange.period.since && orderDate < activeDateRange.period.until) {
+      if (
+        orderDate >= activeDateRange.period.since &&
+        orderDate < setEndOfDay(activeDateRange.period.until)
+      ) {
         orders_temp.push(order);
       }
     });
@@ -1111,7 +1141,7 @@ export default function OrdersPage() {
           const orderDate = new Date(orderData.created_at);
           if (
             orderDate >= activeDateRange.period.since &&
-            orderDate < activeDateRange.period.until
+            orderDate < setEndOfDay(activeDateRange.period.until)
           ) {
             orders_temp.push(orderData);
           }
