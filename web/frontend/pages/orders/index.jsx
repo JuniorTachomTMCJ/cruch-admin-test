@@ -236,6 +236,10 @@ export default function OrdersPage() {
       }
     });
 
+    let metafield = order.metafields.find(
+      (metafield) => metafield.key === "deleted"
+    );
+
     return (
       <IndexTable.Row
         id={order.id}
@@ -283,7 +287,7 @@ export default function OrdersPage() {
         <IndexTable.Cell>
           {fulfillmentStatusBadge(order.fulfillment_status)} {" "}
           {order.cancelled_at ? (<Badge progress="complete" status="fulfilled">Annulée</Badge>) : ""} {" "}
-          {order.metafields[1]?.value ? (<Badge progress="complete" status="critical">Supprimée</Badge>) : ""}
+          {metafield.value ? (<Badge progress="complete" status="critical">Supprimée</Badge>) : ""}
         </IndexTable.Cell>
       </IndexTable.Row>
     );
@@ -294,11 +298,21 @@ export default function OrdersPage() {
       const status = order.financial_status;
       const status_order = order.fulfillment_status;
       const isCancelled = order.cancelled_at !== null;
+
+      let totalGiftCardAmount = 0;
+      order.transactions.forEach((transaction) => {
+        if (
+          transaction.gateway === "gift_card" &&
+          transaction.status === "success"
+        ) {
+          totalGiftCardAmount += parseFloat(transaction.amount);
+        }
+      });
       return {
         Commande: order.name,
         Date: formatDateTime(order.created_at),
         Client: order.customer.first_name + " " + order.customer.last_name,
-        Abondements: order.total_discounts + " €",
+        Abondements: totalGiftCardAmount + " €",
         Total: order.total_price + " €",
         "Statut du paiement":
           status === "paid"

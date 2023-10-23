@@ -57,6 +57,11 @@ export default function OrderDetail() {
   const toggleActiveOne = useCallback(() => setActiveOne((activeOne) => !activeOne), []);
 
   const [alert, setAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState({
+    title: "",
+    message: "",
+    function: () => {},
+  });
   const handleAlert = useCallback(() => setAlert(!alert), [alert]);
 
   const handleChangeStatus = useCallback(async (handle, product_id, statut) => {
@@ -103,7 +108,12 @@ export default function OrderDetail() {
     })
       .then((response) => response.json())
       .then((data) => {
-        setMessage("Commande annulé.");
+        console.log(data);
+        if (data.error) {
+          setMessage(data.error);
+        } else {
+          setMessage("Commande annulée.");
+        }
         toggleActiveOne();
         fetchData();
       })
@@ -117,6 +127,7 @@ export default function OrderDetail() {
         );
         toggleActiveOne();
       });
+    setAlert(false);
   }, [handle]);
 
   const handleDeleteOrder = useCallback(async () => {
@@ -146,6 +157,7 @@ export default function OrderDetail() {
         );
         toggleActiveOne();
       });
+    setAlert(false);
   }, [handle]);
 
   const handleRefundOrder = useCallback(async () => {
@@ -361,7 +373,7 @@ export default function OrderDetail() {
                 content: <Text color="warning">Rembourser</Text>,
                 onAction: () => handleRefundOrder(),
                 disabled: order.refunds?.length === 0 ? false : true,
-              }
+              },
             ],
           },
         ]}
@@ -386,10 +398,10 @@ export default function OrderDetail() {
           <Modal
             open={alert}
             onClose={handleAlert}
-            title={`Supprimer la commande `}
+            title={alertMessage.title}
             primaryAction={{
               content: "Oui",
-              onAction: () => handleDeleteCustomer,
+              onAction: () => alertMessage.function(),
             }}
             secondaryActions={[
               {
@@ -398,12 +410,7 @@ export default function OrderDetail() {
               },
             ]}
           >
-            <Modal.Section>
-              <p>
-                Êtes-vous sûr de vouloir supprimer le compte de{" "}
-                <strong></strong> ?
-              </p>
-            </Modal.Section>
+            <Modal.Section>{alertMessage.message}</Modal.Section>
           </Modal>
         </div>
         <Grid>
@@ -453,7 +460,19 @@ export default function OrderDetail() {
                           backgroundColor: "#303030",
                           color: "white",
                         }}
-                        onClick={handleCancelOrder}
+                        onClick={() => {
+                          setAlertMessage({
+                            title: "Annuler la commande",
+                            message: (
+                              <Text as="p">
+                                Êtes-vous sûr de vouloir annuler la commande{" "}
+                                <strong>{order.name}</strong> ?
+                              </Text>
+                            ),
+                            function: handleCancelOrder,
+                          });
+                          handleAlert();
+                        }}
                       >
                         <span className="Polaris-Button__Content">
                           <span className="Polaris-Button__Text">
@@ -875,7 +894,19 @@ export default function OrderDetail() {
                   backgroundColor: "#e51c00",
                   color: "white",
                 }}
-                onClick={handleDeleteOrder}
+                onClick={() => {
+                  setAlertMessage({
+                    title: "Supprimer la commande",
+                    message: (
+                      <Text as="p">
+                        Êtes-vous sûr de vouloir supprimer la commande{" "}
+                        <strong>{order.name}</strong> ?
+                      </Text>
+                    ),
+                    function: handleDeleteOrder,
+                  });
+                  handleAlert();
+                }}
               >
                 <span className="Polaris-Button__Content">
                   <span className="Polaris-Button__Text">

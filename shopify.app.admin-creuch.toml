@@ -2,7 +2,7 @@
 
 name = "Admin Creuch"
 client_id = "09be7311801190a8dfa85501d6178bef"
-application_url = "https://digit-qualified-choose-gathered.trycloudflare.com"
+application_url = "https://armstrong-worship-stopping-partially.trycloudflare.com"
 embedded = true
 
 [access_scopes]
@@ -11,9 +11,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://digit-qualified-choose-gathered.trycloudflare.com/auth/callback",
-  "https://digit-qualified-choose-gathered.trycloudflare.com/auth/shopify/callback",
-  "https://digit-qualified-choose-gathered.trycloudflare.com/api/auth/callback"
+  "https://armstrong-worship-stopping-partially.trycloudflare.com/auth/callback",
+  "https://armstrong-worship-stopping-partially.trycloudflare.com/auth/shopify/callback",
+  "https://armstrong-worship-stopping-partially.trycloudflare.com/api/auth/callback"
 ]
 
 [webhooks]
