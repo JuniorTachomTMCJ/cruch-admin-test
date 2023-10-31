@@ -47,7 +47,7 @@ import "@shopify/polaris-viz/build/esm/styles.css";
 import { utils, writeFileXLSX } from "xlsx";
 export { utils, writeFileXLSX };
 
-export default function LoginPage() {
+export default function DashboardPage() {
   const app = useAppBridge();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -58,7 +58,6 @@ export default function LoginPage() {
     "total_orders_count": 0,
     "total_reductions_price": 0,
     "total_reductions_count": 0,
-    "total_reductions_use_price": 0,
     "count_reductions_use": 0,
     "count_salarie_register": 0
   });
@@ -281,7 +280,6 @@ export default function LoginPage() {
     let total_orders_count = 0;
     let total_reductions_count = 0;
     let total_reductions_price = 0;
-    let total_reductions_use_price = 0;
     let count_reductions_use = 0;
     let count_salarie_register = 0;
 
@@ -494,7 +492,6 @@ export default function LoginPage() {
             (metafield) => metafield.key === "deleted"
           );
           if (
-            order.financial_status === "paid" &&
             orderDate >= startDate &&
             orderDate < endDate &&
             order.client.entreprise?.code_cse.value == entreprise.code_cse.value &&
@@ -502,8 +499,13 @@ export default function LoginPage() {
           ) {
             total_orders_count++;
             order.transactions.forEach((transaction) => {
-              if (transaction.gateway == "gift_card" && transaction.status == "success") {
+              if (
+                transaction.gateway == "gift_card" &&
+                transaction.status == "success" &&
+                transaction.kind == "sale"
+              ) {
                 total_reductions += parseFloat(transaction.amount);
+                count_reductions_use++;
               }
             });
             total_sales += parseFloat(order.total_price);
@@ -530,7 +532,6 @@ export default function LoginPage() {
             (metafield) => metafield.key === "deleted"
           );
           if (
-            order.financial_status === "paid" &&
             orderDate >= startDate &&
             orderDate < endDate &&
             order.client.entreprise?.code_cse.value == entreprise.code_cse.value &&
@@ -540,9 +541,11 @@ export default function LoginPage() {
             order.transactions.forEach((transaction) => {
               if (
                 transaction.gateway == "gift_card" &&
-                transaction.status == "success"
+                transaction.status == "success" &&
+                transaction.kind == "sale"
               ) {
                 total_reductions += parseFloat(transaction.amount);
+                count_reductions_use++;
               }
             });
             total_sales += parseFloat(order.total_price);
@@ -567,13 +570,7 @@ export default function LoginPage() {
         reduction.disabled_at == null
       ) {
         total_reductions_price += parseFloat(reduction.initial_value);
-        total_reductions_use_price += parseFloat(
-          reduction.initial_value - reduction.balance
-        );
         total_reductions_count++;
-        if (reduction.initial_value - reduction.balance != 0) {
-          count_reductions_use++;
-        }
       }
     });
 
@@ -584,9 +581,6 @@ export default function LoginPage() {
       total_orders_count: total_orders_count,
       total_reductions_price: parseFloat(total_reductions_price).toFixed(2),
       total_reductions_count: total_reductions_count,
-      total_reductions_use_price: parseFloat(
-        total_reductions_use_price
-      ).toFixed(2),
       count_reductions_use: count_reductions_use,
       count_salarie_register: count_salarie_register,
     };
@@ -724,7 +718,7 @@ export default function LoginPage() {
         "Total des abondements": stats.total_reductions_count,
         "Montant global": stats.total_reductions_price + " €",
         "Chiffre d'affaire des abondements utilisés":
-          stats.total_reductions_use_price + " €",
+          stats.total_reductions + " €",
         "Total des abondements utilisés": stats.count_reductions_use,
         Offres: collections.length,
         "Nombre d'inscrits": stats.count_salarie_register,
@@ -1051,8 +1045,7 @@ export default function LoginPage() {
                   </Text>
                   <Divider borderColor="border" />
                   <Text as="h1">
-                    Total des abondements utilisés :{" "}
-                    {stats.total_reductions_use_price} €
+                    Total des abondements utilisés : {stats.total_reductions} €
                   </Text>
                   <Divider borderColor="border" />
                   <Text as="h1">

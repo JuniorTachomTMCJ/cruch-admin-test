@@ -178,14 +178,12 @@ export default function OrderDetail() {
         if (data.errors) {
           data.errors.base.forEach((error) => {
             setMessage(error);
-            toggleActiveOne();
-            setIsLoading(false);
           })
         } else {
           setMessage("Commande remboursé.");
-          toggleActiveOne();
-          fetchData();
         }
+        toggleActiveOne();
+        fetchData();
       })
       .catch((error) => {
         console.error(error);
@@ -369,11 +367,25 @@ export default function OrderDetail() {
                   processOrderItem(handle, "bl");
                 },
               },
-              {
-                content: <Text color="warning">Rembourser</Text>,
-                onAction: () => handleRefundOrder(),
-                disabled: order.refunds?.length === 0 ? false : true,
-              },
+              order.refunds?.length === 0
+                ? {
+                    content: <Text color="warning">Rembourser</Text>,
+                    onAction: () => {
+                      setAlertMessage({
+                        title: "Rembourser le client",
+                        message: (
+                          <Text as="p">
+                            Êtes-vous sûr de vouloir rembourser la commande{" "}
+                            <strong>{order.name}</strong> ?
+                          </Text>
+                        ),
+                        function: handleRefundOrder,
+                      });
+                      handleAlert();
+                    },
+                    disabled: order.refunds?.length === 0 ? false : true,
+                  }
+                : {},
             ],
           },
         ]}
@@ -414,14 +426,21 @@ export default function OrderDetail() {
           </Modal>
         </div>
         <Grid>
-          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 4, lg: 8, xl: 8 }}>
+          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 8, xl: 8 }}>
             <LegacyCard
               title={
                 <Text as="p" fontWeight="semibold">
                   Status de la commande {"  "}
                   <Badge progress="complete" status="paid">
-                    {order.financial_status == "paid" ? "Payé" : "Payé"}
-                  </Badge>{" "}
+                    {order.refunds?.length > 0
+                      ? "Totalement Renmboursé"
+                      : order.financial_status == "paid"
+                      ? "Payé"
+                      : order.financial_status == "partially_refunded"
+                      ? "Partiellement Remboursé"
+                      : "None"}
+                  </Badge>
+                  {"  "}
                   {order.fulfillment_status == null ? (
                     <Badge progress="incomplete" status="attention">
                       En cours
@@ -440,7 +459,8 @@ export default function OrderDetail() {
                   ) : (
                     ""
                   )}{" "}
-                  {order.metafields[1]?.value == true ? (
+                  {order.metafields.length >= 2 &&
+                  order.metafields[1].value == true ? (
                     <Badge progress="complete" status="critical">
                       Supprimée
                     </Badge>
@@ -584,22 +604,6 @@ export default function OrderDetail() {
                               }
                             >
                               <span className="Polaris-Button__Content">
-                                <span className="Polaris-Button__Icon">
-                                  <span className="Polaris-Icon">
-                                    <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                    <svg
-                                      viewBox="0 0 20 20"
-                                      className="Polaris-Icon__Svg"
-                                      focusable="false"
-                                      aria-hidden="true"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                      ></path>
-                                    </svg>
-                                  </span>
-                                </span>
                                 <span className="Polaris-Button__Text">
                                   Marquer en préparation
                                 </span>
@@ -625,22 +629,6 @@ export default function OrderDetail() {
                               }
                             >
                               <span className="Polaris-Button__Content">
-                                <span className="Polaris-Button__Icon">
-                                  <span className="Polaris-Icon">
-                                    <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                    <svg
-                                      viewBox="0 0 20 20"
-                                      className="Polaris-Icon__Svg"
-                                      focusable="false"
-                                      aria-hidden="true"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                      ></path>
-                                    </svg>
-                                  </span>
-                                </span>
                                 <span className="Polaris-Button__Text">
                                   Livré au creuch store
                                 </span>
@@ -666,34 +654,22 @@ export default function OrderDetail() {
                               }
                             >
                               <span className="Polaris-Button__Content">
-                                <span className="Polaris-Button__Icon">
-                                  <span className="Polaris-Icon">
-                                    <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                    <svg
-                                      viewBox="0 0 20 20"
-                                      className="Polaris-Icon__Svg"
-                                      focusable="false"
-                                      aria-hidden="true"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                      ></path>
-                                    </svg>
-                                  </span>
-                                </span>
                                 <span className="Polaris-Button__Text">
                                   Livré au client
                                 </span>
                               </span>
                             </button>
                           ) : (
-                            "Livré au client"
+                            <div>
+                              <Text as="p" fontWeight="bold">
+                                Livré au client
+                              </Text>
+                              <br />
+                            </div>
                           )
                         ) : (
                           ""
                         )}
-
                         <button
                           className="Polaris-Button Polaris-Button--sizeSlim"
                           type="button"
@@ -704,22 +680,6 @@ export default function OrderDetail() {
                           onClick={() => processOrder(handle, product_id, "bl")}
                         >
                           <span className="Polaris-Button__Content">
-                            <span className="Polaris-Button__Icon">
-                              <span className="Polaris-Icon">
-                                <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                <svg
-                                  viewBox="0 0 20 20"
-                                  className="Polaris-Icon__Svg"
-                                  focusable="false"
-                                  aria-hidden="true"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                  ></path>
-                                </svg>
-                              </span>
-                            </span>
                             <span className="Polaris-Button__Text">
                               Imprimer le bon de livraison
                             </span>
@@ -737,22 +697,6 @@ export default function OrderDetail() {
                           }
                         >
                           <span className="Polaris-Button__Content">
-                            <span className="Polaris-Button__Icon">
-                              <span className="Polaris-Icon">
-                                <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                <svg
-                                  viewBox="0 0 20 20"
-                                  className="Polaris-Icon__Svg"
-                                  focusable="false"
-                                  aria-hidden="true"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                  ></path>
-                                </svg>
-                              </span>
-                            </span>
                             <span className="Polaris-Button__Text">
                               Imprimer la facture
                             </span>
@@ -770,22 +714,6 @@ export default function OrderDetail() {
                           }
                         >
                           <span className="Polaris-Button__Content">
-                            <span className="Polaris-Button__Icon">
-                              <span className="Polaris-Icon">
-                                <span className="Polaris-Text--root Polaris-Text--visuallyHidden"></span>
-                                <svg
-                                  viewBox="0 0 20 20"
-                                  className="Polaris-Icon__Svg"
-                                  focusable="false"
-                                  aria-hidden="true"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M8 2a2 2 0 1 1 4 0h3.5a1.5 1.5 0 0 1 1.5 1.5v15a1.5 1.5 0 0 1-1.5 1.5h-11a1.5 1.5 0 0 1-1.5-1.5v-15a1.5 1.5 0 0 1 1.5-1.5h3.5zm-1 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 5a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm8-10.5a1.5 1.5 0 0 0-1.5-1.5h-5a1.5 1.5 0 0 0-1.5 1.5v.5h8v-.5zm-5 6.5h6v-2h-6v2zm0 2h6v2h-6v-2z"
-                                  ></path>
-                                </svg>
-                              </span>
-                            </span>
                             <span className="Polaris-Button__Text">
                               Rembourser le client
                             </span>
@@ -807,51 +735,95 @@ export default function OrderDetail() {
               <LegacyCard.Section>
                 <Box borderColor="border" borderWidth="1" padding="3">
                   <LegacyCard.Subsection>
-                    <HorizontalGrid>
-                      <Text as="p">
-                        Sous-total : {order.current_total_price} €
-                      </Text>
-                    </HorizontalGrid>
-                    <HorizontalGrid>
-                      <Text as="p">
-                        Nombre d'articles : {order.line_items.length}
-                      </Text>
-                    </HorizontalGrid>
-                    <HorizontalGrid>
-                      <Text as="p">
-                        Point de retrait :{" "}
-                        {order.shipping_lines.length >= 1
-                          ? order.shipping_lines[0].title
-                          : ""}
-                      </Text>
-                    </HorizontalGrid>
-                    <HorizontalGrid>
-                      <Text as="p">Total : {order.total_price} €</Text>
-                    </HorizontalGrid>
-                    <HorizontalGrid>
-                      <Text as="p" fontWeight="semibold">
-                        Moyen de paiement
-                      </Text>
-                      <List type="bullet">
-                        {order.payment_gateway_names.map(
-                          (payment_gateway_name, index) => (
-                            <List.Item key={index}>
-                              {payment_gateway_name === "gift_card"
-                                ? "Abondement"
-                                : payment_gateway_name === "manual"
-                                ? "Manuel"
-                                : payment_gateway_name}
-                            </List.Item>
-                          )
-                        )}
-                      </List>
+                    <HorizontalGrid gap="4">
+                      <HorizontalGrid>
+                        <Text as="p" fontWeight="semibold">
+                          Sous-total :{" "}
+                          {order.current_subtotal_price_set?.shop_money?.amount}{" "}
+                          {
+                            order.current_subtotal_price_set?.shop_money
+                              ?.currency_code
+                          }
+                        </Text>
+                      </HorizontalGrid>
+                      <HorizontalGrid>
+                        <Text as="p">
+                          Nombre d'articles : {order.line_items?.length}
+                        </Text>
+                      </HorizontalGrid>
+                      <HorizontalGrid>
+                        <Text as="p">
+                          Point de retrait :{" "}
+                          {order.shipping_lines.length >= 1
+                            ? order.shipping_lines[0].title
+                            : ""}
+                        </Text>
+                      </HorizontalGrid>
+                      <HorizontalGrid>
+                        <Text as="p" fontWeight="semibold">
+                          Total :{" "}
+                          {order.current_total_price_set?.shop_money?.amount}{" "}
+                          {
+                            order.current_total_price_set?.shop_money
+                              ?.currency_code
+                          }
+                        </Text>
+                      </HorizontalGrid>
+                      <HorizontalGrid>
+                        <Text as="p" fontWeight="semibold">
+                          Moyen de paiement
+                        </Text>
+                        <List type="bullet">
+                          {order.payment_gateway_names.map(
+                            (payment_gateway_name, index) => (
+                              <List.Item key={index}>
+                                <div>
+                                  <Text as="p">
+                                    {payment_gateway_name === "gift_card"
+                                      ? "Abondement"
+                                      : payment_gateway_name === "manual"
+                                      ? "Manuel"
+                                      : payment_gateway_name === "stripe"
+                                      ? "Carte de crédit"
+                                      : payment_gateway_name}
+                                  </Text>
+                                  {order.transactions.map(
+                                    (transaction, transactionIndex) => {
+                                      if (
+                                        transaction.gateway ===
+                                          payment_gateway_name &&
+                                        transaction.status === "success"
+                                      ) {
+                                        return (
+                                          <List
+                                            key={transactionIndex}
+                                            type="bullet"
+                                          >
+                                            <List.Item>
+                                              {transaction.kind === "sale"
+                                                ? "Payé: "
+                                                : "Remboursé: "}
+                                              {transaction.amount}{" "}
+                                              {transaction.currency}
+                                            </List.Item>
+                                          </List>
+                                        );
+                                      }
+                                    }
+                                  )}
+                                </div>
+                              </List.Item>
+                            )
+                          )}
+                        </List>
+                      </HorizontalGrid>
                     </HorizontalGrid>
                   </LegacyCard.Subsection>
                 </Box>
               </LegacyCard.Section>
             </LegacyCard>
           </Grid.Cell>
-          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 2, lg: 4, xl: 4 }}>
+          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 4, xl: 4 }}>
             <LegacyCard title="Client" actions={[]}>
               <LegacyCard.Section title="Coordonnées">
                 <HorizontalGrid>
@@ -882,9 +854,9 @@ export default function OrderDetail() {
         </Grid>
         <Grid>
           <Grid.Cell
-            columnSpan={{ xs: 6, sm: 6, md: 4, lg: 11, xl: 11 }}
+            columnSpan={{ xs: 6, sm: 6, md: 4, lg: 9, xl: 10 }}
           ></Grid.Cell>
-          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 2, lg: 1, xl: 1 }}>
+          <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 2, lg: 3, xl: 2 }}>
             {order.metafields.length >= 2 &&
             order.metafields[1].value == false ? (
               <button

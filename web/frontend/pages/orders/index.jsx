@@ -226,6 +226,8 @@ export default function OrdersPage() {
 
   const rowMarkup = filteredOrders.map((order, index) => {
     let totalGiftCardAmount = 0;
+    let totalCardAmount = 0;
+    let totalRefundAmount = 0;
 
     order.transactions.forEach((transaction) => {
       if (
@@ -233,6 +235,18 @@ export default function OrdersPage() {
         transaction.status === "success"
       ) {
         totalGiftCardAmount += parseFloat(transaction.amount);
+      }
+      if (
+        transaction.gateway === "stripe" &&
+        transaction.status === "success"
+      ) {
+        totalCardAmount += parseFloat(transaction.amount);
+      }
+      if (
+        transaction.status === "success" &&
+        transaction.kind === "refund"
+      ) {
+        totalRefundAmount += parseFloat(transaction.amount);
       }
     });
 
@@ -277,29 +291,43 @@ export default function OrdersPage() {
         <IndexTable.Cell>
           {`${order.customer.first_name} ${order.customer.last_name}`}
         </IndexTable.Cell>
-        <IndexTable.Cell>
-          {`${totalGiftCardAmount} €`}
-        </IndexTable.Cell>
+        <IndexTable.Cell>{`${totalGiftCardAmount} €`}</IndexTable.Cell>
+        <IndexTable.Cell>{`${totalCardAmount} €`}</IndexTable.Cell>
         <IndexTable.Cell>{`${order.total_price} €`}</IndexTable.Cell>
+        <IndexTable.Cell>{`${totalRefundAmount} €`}</IndexTable.Cell>
         <IndexTable.Cell>
           {financialStatusBadge(order.financial_status)}
         </IndexTable.Cell>
         <IndexTable.Cell>
-          {fulfillmentStatusBadge(order.fulfillment_status)} {" "}
-          {order.cancelled_at ? (<Badge progress="complete" status="fulfilled">Annulée</Badge>) : ""} {" "}
-          {metafield.value ? (<Badge progress="complete" status="critical">Supprimée</Badge>) : ""}
+          {fulfillmentStatusBadge(order.fulfillment_status)}{" "}
+          {order.cancelled_at ? (
+            <Badge progress="complete" status="fulfilled">
+              Annulée
+            </Badge>
+          ) : (
+            ""
+          )}{" "}
+          {metafield.value ? (
+            <Badge progress="complete" status="critical">
+              Supprimée
+            </Badge>
+          ) : (
+            ""
+          )}
         </IndexTable.Cell>
       </IndexTable.Row>
     );
   });
 
   const exportToExcel = async () => {
-    const tableau = filteredOrders.map((order, index) => {
+    const tableau = paginatedData.map((order, index) => {
       const status = order.financial_status;
       const status_order = order.fulfillment_status;
       const isCancelled = order.cancelled_at !== null;
 
       let totalGiftCardAmount = 0;
+      let totalCardAmount = 0;
+      let totalRefundAmount = 0;
       order.transactions.forEach((transaction) => {
         if (
           transaction.gateway === "gift_card" &&
@@ -307,13 +335,28 @@ export default function OrdersPage() {
         ) {
           totalGiftCardAmount += parseFloat(transaction.amount);
         }
+        if (
+          transaction.gateway === "stripe" &&
+          transaction.status === "success"
+        ) {
+          totalCardAmount += parseFloat(transaction.amount);
+        }
+        if (
+          transaction.status === "success" &&
+          transaction.kind === "refund"
+        ) {
+          totalRefundAmount += parseFloat(transaction.amount);
+        }
       });
       return {
         Commande: order.name,
         Date: formatDateTime(order.created_at),
         Client: order.customer.first_name + " " + order.customer.last_name,
         Abondements: totalGiftCardAmount + " €",
+        "Payé par carte": totalCardAmount + " €",
+        "Moyen de paiement": order.payment_gateway_names.join(", "),
         Total: order.total_price + " €",
+        Remboursé: totalRefundAmount + " €",
         "Statut du paiement":
           status === "paid"
             ? "Payée"
@@ -1388,7 +1431,9 @@ export default function OrdersPage() {
                 { title: "Date" },
                 { title: "Client" },
                 { title: "Abondements" },
-                { title: "Total", alignment: "end" },
+                { title: "Payé par carte" },
+                { title: "Total" },
+                { title: "Remboursé" },
                 { title: "Statut du paiement" },
                 { title: "Statut des commandes" },
               ]}

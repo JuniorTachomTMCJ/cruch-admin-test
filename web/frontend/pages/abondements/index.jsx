@@ -155,7 +155,7 @@ export default function AbondementsPage() {
         </IndexTable.Cell>
         <IndexTable.Cell>{formatDateTime(created_at)}</IndexTable.Cell>
         <IndexTable.Cell>
-          {customer.firstName} {customer.lastName}
+          {customer?.firstName} {customer?.lastName}
         </IndexTable.Cell>
         <IndexTable.Cell>
           {initial_value} {currency}
@@ -312,8 +312,8 @@ export default function AbondementsPage() {
           break;
         case "client":
           sortedOrders.sort((a, b) => {
-            const nameA = `${a.customer.firstName} ${a.customer.lastName}`;
-            const nameB = `${b.customer.firstName} ${b.customer.lastName}`;
+            const nameA = `${a.customer?.firstName} ${a.customer?.lastName}`;
+            const nameB = `${b.customer?.firstName} ${b.customer?.lastName}`;
             if (sortDirection === "asc") {
               return nameA.localeCompare(nameB);
             } else {
@@ -418,7 +418,7 @@ export default function AbondementsPage() {
         const filteredAbondements = abondements.filter(
           (abondement) =>
             abondement.note.toLowerCase().includes(searchValueLower) ||
-            `${abondement.customer.firstName} ${abondement.customer.lastName}`
+            `${abondement.customer?.firstName} ${abondement.customer?.lastName}`
               .toLowerCase()
               .includes(searchValueLower) ||
             abondement.balance
@@ -657,7 +657,7 @@ export default function AbondementsPage() {
                         label="Salariés"
                         options={[
                           ...customers.map((customer) => ({
-                            label: customer.firstName + " " + customer.lastName,
+                            label: customer?.firstName + " " + customer?.lastName,
                             value: customer.id.match(/\/(\d+)$/)[1],
                           })),
                         ]}
