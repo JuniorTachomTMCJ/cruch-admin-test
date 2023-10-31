@@ -79,10 +79,10 @@ export default function CsePage() {
             size="small"
           />
         </IndexTable.Cell>
-        <IndexTable.Cell>{code_cse.value}</IndexTable.Cell>
-        <IndexTable.Cell>{cse_name.value}</IndexTable.Cell>
-        <IndexTable.Cell>{email.value} </IndexTable.Cell>
-        <IndexTable.Cell>{phone.value} </IndexTable.Cell>
+        <IndexTable.Cell>{code_cse?.value}</IndexTable.Cell>
+        <IndexTable.Cell>{cse_name?.value}</IndexTable.Cell>
+        <IndexTable.Cell>{email?.value} </IndexTable.Cell>
+        <IndexTable.Cell>{phone?.value} </IndexTable.Cell>
         <IndexTable.Cell>
           <button
             onClick={async () => {
@@ -91,7 +91,7 @@ export default function CsePage() {
                 {
                   method: "POST",
                   body: JSON.stringify({
-                    code_cse: code_cse.value,
+                    code_cse: code_cse?.value,
                   }),
                   headers: {
                     "Content-type": "application/json",
@@ -101,18 +101,18 @@ export default function CsePage() {
                 .then((response) => response.json())
                 .then((data) => {
                   console.log("oco", data);
-                  if (data.data.metaobjects.edges.length > 0) {
+                  if (data?.data?.metaobjects?.edges?.length > 0) {
                     if (
-                      data.data.metaobjects.edges[0].node.password.value ===
-                      password.value
+                      data?.data?.metaobjects?.edges[0]?.node?.password?.value ===
+                      password?.value
                     ) {
                       localStorage.setItem(
                         "user",
-                        JSON.stringify(data.data.metaobjects.edges[0].node)
+                        JSON.stringify(data?.data?.metaobjects?.edges[0]?.node)
                       );
                       console.log(
                         "connected",
-                        data.data.metaobjects.edges[0].node
+                        data?.data?.metaobjects?.edges[0]?.node
                       );
                       ///redirect.dispatch(Redirect.Action.APP, "/dashboard");
                       redirect.dispatch(
@@ -142,10 +142,10 @@ export default function CsePage() {
     const tableau = coops.map((coop, index) => {
       return {
         Image: coop.image ? coop.image.value : "Aucun",
-        Code: coop.code_cse.value,
-        Nom: coop.cse_name.value,
-        Email: coop.email.value,
-        Téléphone: coop.phone.value,
+        Code: coop.code_cse?.value,
+        Nom: coop.cse_name?.value,
+        Email: coop.email?.value,
+        Téléphone: coop.phone?.value,
       };
     });
     const wb = utils.book_new();
@@ -246,9 +246,9 @@ export default function CsePage() {
         case "code_cse":
           sortedCoops.sort((a, b) => {
             if (sortDirection === "asc") {
-              return a.code_cse.value.localeCompare(b.code_cse.value);
+              return a.code_cse?.value.localeCompare(b.code_cse?.value);
             } else {
-              return b.code_cse.value.localeCompare(a.code_cse.value);
+              return b.code_cse?.value.localeCompare(a.code_cse?.value);
             }
           });
           break;
@@ -323,7 +323,7 @@ export default function CsePage() {
         if (value.length === 0) {
           return true;
         }
-        return value.includes(String(coop.code_cse.value));
+        return value.includes(String(coop.code_cse?.value));
       });
 
       setFilteredCoops(filteredCoops);
@@ -345,10 +345,10 @@ export default function CsePage() {
         setFilteredCoops(coops);
       } else {
         const filteredCoops = coops.filter((coop) => {
-          const code_cse = String(coop.code_cse.value).toLowerCase();
-          const cse_name = String(coop.cse_name.value).toLowerCase();
-          const email = String(coop.email.value).toLowerCase();
-          const phone = String(coop.phone.value).toLowerCase();
+          const code_cse = String(coop.code_cse?.value).toLowerCase();
+          const cse_name = String(coop.cse_name?.value).toLowerCase();
+          const email = String(coop.email?.value).toLowerCase();
+          const phone = String(coop.phone?.value).toLowerCase();
 
           return (
             code_cse.includes(searchValueLower) ||
@@ -372,7 +372,7 @@ export default function CsePage() {
         if (cse.length === 0) {
           return true;
         }
-        return cse.includes(String(coop.code_cse.value));
+        return cse.includes(String(coop.code_cse?.value));
       });
     }
     setFilteredCoops(filteredCoops);
@@ -389,8 +389,8 @@ export default function CsePage() {
           choices={[
             ...entreprises.map((entreprise) => {
               return {
-                label: entreprise.cse_name.value,
-                value: entreprise.code_cse.value,
+                label: entreprise.cse_name?.value,
+                value: entreprise.code_cse?.value,
               };
             }),
           ]}
@@ -417,7 +417,7 @@ export default function CsePage() {
     let entrepriseLabels = {};
 
     entreprises.forEach((entreprise) => {
-      entrepriseLabels[entreprise.code_cse.value] = entreprise.cse_name.value;
+      entrepriseLabels[entreprise.code_cse?.value] = entreprise.cse_name?.value;
     });
 
     switch (key) {

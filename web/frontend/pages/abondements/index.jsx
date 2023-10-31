@@ -459,8 +459,8 @@ export default function AbondementsPage() {
           choices={[
             ...entreprises.map((entreprise) => {
               return {
-                label: entreprise.cse_name.value,
-                value: entreprise.code_cse.value,
+                label: entreprise.cse_name?.value,
+                value: entreprise.code_cse?.value,
               };
             }),
           ]}
@@ -487,7 +487,7 @@ export default function AbondementsPage() {
     let entrepriseLabels = {};
 
     entreprises.forEach((entreprise) => {
-      entrepriseLabels[entreprise.code_cse.value] = entreprise.cse_name.value;
+      entrepriseLabels[entreprise.code_cse?.value] = entreprise.cse_name?.value;
     });
 
     switch (key) {

@@ -240,8 +240,8 @@ export default function ClientsPage() {
           break;
         case "code_cse":
           sortedOrders.sort((a, b) => {
-            let a_entreprise = a.entreprise ? a.entreprise.cse_name.value : "";
-            let b_entreprise = b.entreprise ? b.entreprise.cse_name.value : "";
+            let a_entreprise = a.entreprise ? a.entreprise.cse_name?.value : "";
+            let b_entreprise = b.entreprise ? b.entreprise.cse_name?.value : "";
             if (sortDirection === "asc") {
               return a_entreprise.localeCompare(b_entreprise);
             } else {
@@ -292,7 +292,7 @@ export default function ClientsPage() {
         return true;
       }
       return value.includes(
-        String(customer.entreprise ? customer.entreprise.code_cse.value : "")
+        String(customer.entreprise ? customer.entreprise?.code_cse?.value : "")
       );
     });
 
@@ -345,7 +345,7 @@ export default function ClientsPage() {
           return true;
         }
         return cse.includes(
-          String(customer.entreprise ? customer.entreprise.code_cse.value : "")
+          String(customer.entreprise ? customer.entreprise?.code_cse?.value : "")
         );
       });
     }
@@ -363,8 +363,8 @@ export default function ClientsPage() {
           choices={[
             ...entreprises.map((entreprise) => {
               return {
-                label: entreprise.cse_name.value,
-                value: entreprise.code_cse.value,
+                label: entreprise.cse_name?.value,
+                value: entreprise.code_cse?.value,
               };
             }),
           ]}
@@ -391,7 +391,7 @@ export default function ClientsPage() {
     let entrepriseLabels = {};
 
     entreprises.forEach((entreprise) => {
-      entrepriseLabels[entreprise.code_cse.value] = entreprise.cse_name.value;
+      entrepriseLabels[entreprise.code_cse?.value] = entreprise.cse_name?.value;
     });
 
     switch (key) {

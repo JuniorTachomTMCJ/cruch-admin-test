@@ -30,7 +30,6 @@ import {
   HorizontalStack,
   TextField,
   DatePicker,
-  
 } from "@shopify/polaris";
 import {
   ImageMajor,
@@ -672,7 +671,7 @@ export default function OrdersPage() {
         if (value.length === 0) {
           return true;
         }
-        return value.includes(String(order.client.entreprise.code_cse.value));
+        return value.includes(String(order.client?.entreprise?.code_cse?.value));
       });
       let orders_temp = [];
       updatedFilteredOrders.forEach((order) => {
@@ -895,8 +894,8 @@ export default function OrdersPage() {
           choices={[
             ...entreprises.map((entreprise) => {
               return {
-                label: entreprise.cse_name.value,
-                value: entreprise.code_cse.value,
+                label: entreprise.cse_name?.value,
+                value: entreprise.code_cse?.value,
               };
             }),
           ]}
@@ -939,7 +938,7 @@ export default function OrdersPage() {
     let entrepriseLabels = {};
 
     entreprises.forEach((entreprise) => {
-      entrepriseLabels[entreprise.code_cse.value] = entreprise.cse_name.value;
+      entrepriseLabels[entreprise.code_cse?.value] = entreprise.cse_name?.value;
     });
 
     switch (key) {

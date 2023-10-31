@@ -85,7 +85,7 @@ export default function HomePage() {
       const fetchData = async () => {
           await fetch("https://staging.api.creuch.fr/api/check_entreprise", {
               method: "POST",
-              body: JSON.stringify({ code_cse: JSON.parse(localStorage.getItem('user')).code_cse.value }),
+              body: JSON.stringify({ code_cse: JSON.parse(localStorage.getItem('user')).code_cse?.value }),
               headers: { "Content-type": "application/json" },
           })
           .then((response) => response.json())

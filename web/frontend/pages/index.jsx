@@ -306,8 +306,8 @@ export default function DashboardPage() {
                   productsIds.includes(String(product.product_id)) &&
                   orderDate >= startDate &&
                   orderDate < endDate &&
-                  order.client.entreprise?.code_cse.value ==
-                    entreprise.code_cse.value &&
+                  order.client?.entreprise?.code_cse?.value ==
+                    entreprise.code_cse?.value &&
                   metafield.value == false
                 ) {
                   const formattedDate = orderDate.toISOString().slice(0, 10);
@@ -339,8 +339,8 @@ export default function DashboardPage() {
                     productsIds.includes(String(product.product_id)) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise?.code_cse.value ==
-                      entreprise.code_cse.value &&
+                    order.client?.entreprise?.code_cse?.value ==
+                      entreprise.code_cse?.value &&
                     metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
@@ -364,8 +364,8 @@ export default function DashboardPage() {
                     String(productId.match(/\/(\d+)$/)[1]) == String(product.product_id) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise?.code_cse.value ==
-                      entreprise.code_cse.value &&
+                    order.client?.entreprise?.code_cse?.value ==
+                      entreprise.code_cse?.value &&
                     metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
@@ -384,7 +384,7 @@ export default function DashboardPage() {
     } else {
       entreprisesIds.forEach((entrepriseId) => {
         const entreprise = entreprises.find(
-          (entreprise) => entreprise.code_cse.value === entrepriseId
+          (entreprise) => entreprise.code_cse?.value === entrepriseId
         );
 
         if (collectionsIds.length === 0) {
@@ -402,8 +402,8 @@ export default function DashboardPage() {
                   productsIds.includes(String(product.product_id)) &&
                   orderDate >= startDate &&
                   orderDate < endDate &&
-                  order.client.entreprise?.code_cse.value ==
-                    entreprise.code_cse.value &&
+                  order.client?.entreprise?.code_cse?.value ==
+                    entreprise.code_cse?.value &&
                   metafield.value == false
                 ) {
                   const formattedDate = orderDate.toISOString().slice(0, 10);
@@ -435,8 +435,8 @@ export default function DashboardPage() {
                     productsIds.includes(String(product.product_id)) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise?.code_cse.value ==
-                      entreprise.code_cse.value &&
+                    order.client?.entreprise?.code_cse?.value ==
+                      entreprise.code_cse?.value &&
                     metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
@@ -461,8 +461,8 @@ export default function DashboardPage() {
                       String(product.product_id) &&
                     orderDate >= startDate &&
                     orderDate < endDate &&
-                    order.client.entreprise?.code_cse.value ==
-                      entreprise.code_cse.value &&
+                    order.client?.entreprise?.code_cse?.value ==
+                      entreprise.code_cse?.value &&
                     metafield.value == false
                   ) {
                     const formattedDate = orderDate.toISOString().slice(0, 10);
@@ -494,7 +494,7 @@ export default function DashboardPage() {
           if (
             orderDate >= startDate &&
             orderDate < endDate &&
-            order.client.entreprise?.code_cse.value == entreprise.code_cse.value &&
+            order.client?.entreprise?.code_cse?.value == entreprise.code_cse?.value &&
             metafield.value == false
           ) {
             total_orders_count++;
@@ -515,7 +515,7 @@ export default function DashboardPage() {
         customers.forEach((customer) => {
           const customerDate = new Date(customer.createdAt);
           const metafield = customer.metafields.find((metafield) => metafield.key === "code_cse");
-          if (customerDate >= startDate && customerDate < endDate && metafield.value == entreprise.code_cse.value) {
+          if (customerDate >= startDate && customerDate < endDate && metafield.value == entreprise.code_cse?.value) {
             count_salarie_register++;
           }
         });
@@ -523,7 +523,7 @@ export default function DashboardPage() {
     } else {
       entreprisesIds.forEach((entrepriseId) => {
         const entreprise = entreprises.find(
-          (entreprise) => entreprise.code_cse.value === entrepriseId
+          (entreprise) => entreprise.code_cse?.value === entrepriseId
         );
 
         orders.forEach((order) => {
@@ -534,7 +534,7 @@ export default function DashboardPage() {
           if (
             orderDate >= startDate &&
             orderDate < endDate &&
-            order.client.entreprise?.code_cse.value == entreprise.code_cse.value &&
+            order.client?.entreprise?.code_cse?.value == entreprise.code_cse?.value &&
             metafield.value == false
           ) {
             total_orders_count++;
@@ -555,7 +555,7 @@ export default function DashboardPage() {
         customers.forEach((customer) => {
           const customerDate = new Date(customer.createdAt);
           const metafield = customer.metafields.find((metafield) => metafield.key === "code_cse");
-          if (customerDate >= startDate && customerDate < endDate && metafield.value == entreprise.code_cse.value) {
+          if (customerDate >= startDate && customerDate < endDate && metafield.value == entreprise.code_cse?.value) {
             count_salarie_register++;
           }
         });
@@ -1177,15 +1177,15 @@ export default function DashboardPage() {
                         />
                       </VerticalStack>
                       {entreprises.map((entreprise) => (
-                        <VerticalStack key={entreprise.code_cse.value}>
+                        <VerticalStack key={entreprise.code_cse?.value}>
                           <Checkbox
-                            label={entreprise.company.value}
+                            label={entreprise.company?.value}
                             checked={selectedEntreprises.includes(
-                              entreprise.code_cse.value
+                              entreprise.code_cse?.value
                             )}
                             onChange={() =>
                               handleSelectionEntreprises(
-                                entreprise.code_cse.value
+                                entreprise.code_cse?.value
                               )
                             }
                           />
