@@ -619,7 +619,7 @@ export default function OrdersPage() {
   const handleCommandeStatusChange = useCallback(
     (value) => {
       setCommandeStatus(value);
-      const updatedFilteredOrders = orders.filter((order) => {
+      let updatedFilteredOrders = orders.filter((order) => {
         if (value.length === 0) {
           return true;
         }
@@ -643,7 +643,7 @@ export default function OrdersPage() {
   const handlePaiementStatusChange = useCallback(
     (value) => {
       setPaiementStatus(value);
-      const updatedFilteredOrders = orders.filter((order) => {
+      let updatedFilteredOrders = orders.filter((order) => {
         if (value.length === 0) {
           return true;
         }
@@ -667,7 +667,7 @@ export default function OrdersPage() {
   const handleCseChange = useCallback(
     (value) => {
       setCse(value);
-      const updatedFilteredOrders = orders.filter((order) => {
+      let updatedFilteredOrders = orders.filter((order) => {
         if (value.length === 0) {
           return true;
         }
@@ -695,7 +695,7 @@ export default function OrdersPage() {
       if (searchValueLower === "") {
         setFilteredOrders(filteredOrders);
       } else {
-        const updatedFilteredOrders = filteredOrders.filter(
+        let updatedFilteredOrders = filteredOrders.filter(
           (order) =>
             order.name.toLowerCase().includes(searchValueLower) ||
             `${order.customer.first_name} ${order.customer.last_name}`
@@ -721,7 +721,7 @@ export default function OrdersPage() {
 
   const handleFiltersQueryClear = useCallback(() => {
     setQueryValue("");
-    const updatedFilteredOrders = orders;
+    let updatedFilteredOrders = orders;
     if (paiementStatus.length >= 1) {
       updatedFilteredOrders = updatedFilteredOrders.filter((order) => {
         if (paiementStatus.length === 0) {
