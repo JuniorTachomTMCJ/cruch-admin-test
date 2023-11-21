@@ -11,9 +11,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://bid-assuming-satisfactory-addresses.trycloudflare.com/auth/callback",
-  "https://bid-assuming-satisfactory-addresses.trycloudflare.com/auth/shopify/callback",
-  "https://bid-assuming-satisfactory-addresses.trycloudflare.com/api/auth/callback"
+  "https://wondrous-mandazi-291ab8.netlify.app/auth/callback",
+  "https://wondrous-mandazi-291ab8.netlify.app/auth/shopify/callback",
+  "https://wondrous-mandazi-291ab8.netlify.app/api/auth/callback"
 ]
 
 [webhooks]
