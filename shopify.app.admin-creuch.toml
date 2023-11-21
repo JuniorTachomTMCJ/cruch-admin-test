@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 name = "Admin Creuch"
-client_id = "09be7311801190a8dfa85501d6178bef"
+client_id = "d612b4cff032e7c9374665cb02060548"
 application_url = "https://bid-assuming-satisfactory-addresses.trycloudflare.com"
 embedded = true
 
